@@ -94,9 +94,11 @@ void* client_thread(void* arg)
 			printf("[bank] fail to read packet\n");
 			break;
 		}
+		else
+		{
+			printf("Packet: %s", packet);
+		}
 		
-		printf("Packet: %s", packet);
-		printf("\n");		
 		//TODO: process packet data
 		
 		//TODO: put new data in packet
