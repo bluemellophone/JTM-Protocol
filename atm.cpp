@@ -1,4 +1,4 @@
- /**
+/**
     @file atm.cpp
     @brief Top level ATM implementation file
  */
