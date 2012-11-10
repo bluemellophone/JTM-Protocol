@@ -1,4 +1,4 @@
-  /**
+/**
 	@file bank.cpp
 	@brief Top level bank implementation file
  */
@@ -119,6 +119,8 @@ void* client_thread(void* arg)
 			break;
 		}
 		
+		printf("Packet: %s", packet);
+		printf("\n");		
 		//TODO: process packet data
 		
         printf("[bank] Recieved ATM Packet (Length %d): %s\n", (int) strlen(packet), packet);
