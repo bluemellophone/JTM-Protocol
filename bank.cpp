@@ -1,4 +1,4 @@
-/**
+  /**
 	@file bank.cpp
 	@brief Top level bank implementation file
  */
@@ -11,9 +11,28 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <string.h>
+#include <vector>
+#include <sstream>
+#include <iostream>
+	
+
+using std::cout;
+using std::cin;
+using std::endl;
 
 void* client_thread(void* arg);
 void* console_thread(void* arg);
+
+std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) 
+{
+    std::stringstream ss(s+' ');
+    std::string item;
+    while(std::getline(ss, item, delim)) 
+    {
+        elems.push_back(item);
+    }
+    return elems;
+}
 
 int main(int argc, char* argv[])
 {
@@ -72,21 +91,26 @@ int main(int argc, char* argv[])
 
 void* client_thread(void* arg)
 {
+
 	int csock = (int)arg;
+	//long unsigned int csock = (long unsigned int)arg;
 	
 	printf("[bank] client ID #%d connected\n", csock);
+	//printf("[bank] client ID #%ld connected\n", csock);
 	
 	//input loop
 	int length;
 	char packet[1024];
+	std::string response = "";
 	while(1)
 	{
+
 		//read the packet from the ATM
 		if(sizeof(int) != recv(csock, &length, sizeof(int), 0))
 			break;
 		if(length >= 1024)
 		{
-			printf("packet too long\n");
+			printf("[bank] packet too long\n");
 			break;
 		}
 		if(length != recv(csock, packet, length, 0))
@@ -97,8 +121,53 @@ void* client_thread(void* arg)
 		
 		//TODO: process packet data
 		
-		//TODO: put new data in packet
+        printf("[bank] Recieved ATM Packet (Length %d): %s\n", (int) strlen(packet), packet);
 		
+		// Parse packet
+		packet[strlen(packet)-1] = '\0';  //trim off trailing newline
+		std::vector<std::string> bufArray;
+        bufArray = split((std::string) packet, ',', bufArray);
+	    std::string command = bufArray[0];
+        packet[0] = '\0';
+        
+        // There exists a command, check the command
+        
+        if(bufArray.size() == 7)
+		{
+			if(((std::string) "login") == command) //if command is 'login'
+	        {   
+	    		response = command + " " + bufArray[1];
+	        } 
+	        else if(((std::string) "balance") == command) //if command is 'login'
+	        {   
+	    		response = command + " " + bufArray[1];
+	        } 
+	        else if(((std::string) "withdraw") == command) //if command is 'login'
+	        {   
+	    		response = command + " " + bufArray[1] + "  amount: " + bufArray[4];
+	        }
+	        else if(((std::string) "transfer") == command) //if command is 'login'
+	        {   
+	    		response = command + " " + bufArray[1] + "  amount: " + bufArray[4] + "  recipient: " + bufArray[5];
+	        }  
+	        else if(((std::string) "logout") == command) //if command is 'login'
+	        {   
+	    		response = command + " " + bufArray[1];
+	        }
+	    } 
+        else
+        {
+        	// Error: Command sent from ATM not recognized.
+    		response = "Error.  ATM Command not valid";
+        }
+
+        // Put response into the packet
+	    for(int i = 0; i < response.length(); i++)
+		{
+			packet[i] = response[i];
+		}
+		packet[response.length()] = '\0';
+
 		//send the new packet back to the client
 		if(sizeof(int) != send(csock, &length, sizeof(int), 0))
 		{
@@ -110,24 +179,67 @@ void* client_thread(void* arg)
 			printf("[bank] fail to send packet\n");
 			break;
 		}
-
 	}
 
 	printf("[bank] client ID #%d disconnected\n", csock);
-
+	//printf("[bank] client ID #%ld disconnected\n", csock);
+	
 	close(csock);
 	return NULL;
 }
 
 void* console_thread(void* arg)
 {
-	char buf[80];
+	char buf[80]; 
+	std::string command;
+	std::vector<std::string> bufArray;
 	while(1)
 	{
+		bufArray.clear();
+
 		printf("bank> ");
 		fgets(buf, 79, stdin);
 		buf[strlen(buf)-1] = '\0';	//trim off trailing newline
 		
-		//TODO: your input parsing code has to go here
+		// Parse data
+        bufArray = split((std::string) buf, ' ', bufArray);
+
+        //input parsing
+        if(bufArray.size() >= 1 && ((std::string) "") != bufArray[0])
+        {
+            command = bufArray[0];
+                
+            if(((std::string) "deposit") == command) //if command is 'login'
+            {   
+               	if(bufArray.size() == 3)
+	            {
+	            	cout << "Deposited " << bufArray[2] << " into " << bufArray[1] << "'s account\n";
+	            }
+	            else
+	            {
+	                cout << "Usage: deposit [username] [amount]\n";
+	            }
+            } 
+            else if(((std::string) "balance") == command) //if command is 'login'
+            {    
+               	if(bufArray.size() == 2)
+	            {
+	            	cout << "Balance for " << bufArray[1] << "\n";
+	            }
+	            else
+	            {
+	                cout << "Usage: deposit [username]\n";
+	            }
+            } 
+            else
+            {
+                cout << "Command '" << command << "' not recognized.\n";
+            }
+        }
+        else
+        {
+            cout << "Usage: [command] [+argument]\n";
+        } 
+
 	}
 }
