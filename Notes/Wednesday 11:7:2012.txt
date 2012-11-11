@@ -25,11 +25,11 @@ Transfer Limit = $1000 per day
 
 --------------------- Project Data Structures ---------------------
 
-ATM Message = Command, Username Hash, Card Number Hash, Pin Hash, Dollar Amount, Transfer Username Hash, New ATM Nonce, Last Bank Nonce
-Bank Message = Command, Status, Last ATM Nonce, New Bank Nonce
+ATM Message = Command, Username Hash, Card Number Hash, Pin Hash, Dollar Amount, Transfer Username Hash, New ATM Nonce, Last Bank Nonce, Random Padding to 1024
+Bank Message = Command, Status, Last ATM Nonce, New Bank Nonce, Random Padding to 1024
 
-Packet = E(Message || Hash(Message) || Random Padding)
-Packet Length = 1024 Characters
+Packet = E(Message || Hash(Message))
+Packet Length = 1023 Characters
 
 XXX.card (card file for user XXX)
 	Hash of user's account number

@@ -34,8 +34,22 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
     return elems;
 }
 
+std::string getRandom(int length)
+{   
+    std::string retStr = "";
+
+    for(unsigned int i = 0; i < length; ++i)
+    {
+        retStr += ((rand() % 74) + '0');
+    }
+    
+    return retStr;
+}
+
 int main(int argc, char* argv[])
 {
+    srand(812301230);
+
 	if(argc != 2)
 	{
 		printf("Usage: bank listen-port\n");
@@ -102,12 +116,18 @@ void* client_thread(void* arg)
 	int length;
 	char packet[1024];
 	std::string response = "";
+	std::string bankNonce;
+	std::vector<std::string> bufArray;
+	std::string command;
 	while(1)
 	{
+		bufArray.clear();
 
 		//read the packet from the ATM
 		if(sizeof(int) != recv(csock, &length, sizeof(int), 0))
+		{
 			break;
+		}	
 		if(length >= 1024)
 		{
 			printf("[bank] packet too long\n");
@@ -118,49 +138,61 @@ void* client_thread(void* arg)
 			printf("[bank] fail to read packet\n");
 			break;
 		}
-		
-		printf("Packet: %s", packet);
-		printf("\n");		
-		//TODO: process packet data
-		
-        printf("[bank] Recieved ATM Packet (Length %d): %s\n", (int) strlen(packet), packet);
-		
-		// Parse packet
-		packet[strlen(packet)-1] = '\0';  //trim off trailing newline
-		std::vector<std::string> bufArray;
-        bufArray = split((std::string) packet, ',', bufArray);
-	    std::string command = bufArray[0];
-        packet[0] = '\0';
-        
-        // There exists a command, check the command
-        
-        if(bufArray.size() == 7)
+		else if(length == 1023)
 		{
-			if(((std::string) "login") == command) //if command is 'login'
-	        {   
-	    		response = command + " " + bufArray[1];
-	        } 
-	        else if(((std::string) "balance") == command) //if command is 'login'
-	        {   
-	    		response = command + " " + bufArray[1];
-	        } 
-	        else if(((std::string) "withdraw") == command) //if command is 'login'
-	        {   
-	    		response = command + " " + bufArray[1] + "  amount: " + bufArray[4];
-	        }
-	        else if(((std::string) "transfer") == command) //if command is 'login'
-	        {   
-	    		response = command + " " + bufArray[1] + "  amount: " + bufArray[4] + "  recipient: " + bufArray[5];
-	        }  
-	        else if(((std::string) "logout") == command) //if command is 'login'
-	        {   
-	    		response = command + " " + bufArray[1];
-	        }
+			printf("[bank] Recieved ATM Packet (Length %d): %s\n", length, packet);
+			packet[strlen(packet)-1] = '\0';  //trim off trailing newline
+			bufArray = split((std::string) packet, ',', bufArray);
+	    	command = bufArray[0];
+		}
+		
+		//TODO: process packet data
+		packet[0] = '\0';
+        
+        if(bufArray.size() == 9)
+		{
+			if(bankNonce == "" || bankNonce == bufArray[7])
+			{
+				bankNonce = getRandom(32);
+				response = command + ",";
+
+				// Don't put commas in responses!!! 
+
+				if(((std::string) "login") == command) //if command is 'login'
+		        {   
+		    		response += "login of " + bufArray[1];
+		        } 
+		        else if(((std::string) "balance") == command) //if command is 'login'
+		        {   
+		    		response += "balance of " + bufArray[1];
+		        } 
+		        else if(((std::string) "withdraw") == command) //if command is 'login'
+		        {   
+		    		response += "withdraw of " + bufArray[1] + "  amount: " + bufArray[4];
+		        }
+		        else if(((std::string) "transfer") == command) //if command is 'login'
+		        {   
+		    		response += "transfer of " + bufArray[1] + "  amount: " + bufArray[4] + "  recipient: " + bufArray[5];
+		        }  
+		        else if(((std::string) "logout") == command) //if command is 'login'
+		        {   
+		    		response += "logout of " + bufArray[1];
+		        }
+
+		        response += "," + bufArray[6] + "," + bankNonce;
+		        response += "," + getRandom(1023 - 2 - response.length());
+	    	}
+	    	else
+	    	{
+    			response = "error,ATM Nonce not valid,0,0";	
+		        response += "," + getRandom(1023 - 2 - response.length());
+	    	}
 	    } 
         else
         {
         	// Error: Command sent from ATM not recognized.
-    		response = "Error.  ATM Command not valid";
+    		response = "error,ATM Command not valid,0,0";	
+		    response += "," + getRandom(1023 - 2 - response.length());
         }
 
         // Put response into the packet
@@ -240,7 +272,7 @@ void* console_thread(void* arg)
         }
         else
         {
-            cout << "Usage: [command] [+argument]\n";
+            cout << "Usage: [command] [argument...]\n";
         } 
 
 	}
