@@ -29,7 +29,10 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
     std::string item;
     while(std::getline(ss, item, delim)) 
     {
-        elems.push_back(item);
+        if(item != "")
+        {
+            elems.push_back(item.substr(0,32));   
+        }
     }
     return elems;
 }
@@ -116,7 +119,7 @@ void* client_thread(void* arg)
 	int length;
 	char packet[1024];
 	std::string response = "";
-	std::string bankNonce;
+	std::string bankNonce = "";
 	std::vector<std::string> bufArray;
 	std::string command;
 	while(1)
@@ -151,32 +154,32 @@ void* client_thread(void* arg)
         
         if(bufArray.size() == 9)
 		{
-			if(bankNonce == "" || bankNonce == bufArray[7])
+
+			if((bankNonce == "" && bufArray[7] == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") || bankNonce == bufArray[7])
 			{
 				bankNonce = getRandom(32);
-				response = command + ",";
 
 				// Don't put commas in responses!!! 
 
 				if(((std::string) "login") == command) //if command is 'login'
 		        {   
-		    		response += "login of " + bufArray[1];
+		    		response = command + "," + "login of " + bufArray[1];
 		        } 
 		        else if(((std::string) "balance") == command) //if command is 'login'
 		        {   
-		    		response += "balance of " + bufArray[1];
+		    		response = command + "," + "balance of " + bufArray[1];
 		        } 
 		        else if(((std::string) "withdraw") == command) //if command is 'login'
 		        {   
-		    		response += "withdraw of " + bufArray[1] + "  amount: " + bufArray[4];
+		    		response = command + "," + "withdraw of " + bufArray[1] + "  amount: " + bufArray[4];
 		        }
 		        else if(((std::string) "transfer") == command) //if command is 'login'
 		        {   
-		    		response += "transfer of " + bufArray[1] + "  amount: " + bufArray[4] + "  recipient: " + bufArray[5];
+		    		response = command + "," + "transfer of " + bufArray[1] + "  amount: " + bufArray[4] + "  recipient: " + bufArray[5];
 		        }  
 		        else if(((std::string) "logout") == command) //if command is 'login'
 		        {   
-		    		response += "logout of " + bufArray[1];
+		    		response = command + "," + "logout of " + bufArray[1];
 		        }
 
 		        response += "," + bufArray[6] + "," + bankNonce;

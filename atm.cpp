@@ -19,12 +19,33 @@
 #include <sstream>
 #include <iterator>
 #include <termios.h>
+// #include "includes/cryptopp/dll.h"
+// #include "includes/cryptopp/sha.h"
+// #include "includes/cryptopp/hex.h"
+
 
 using std::cout;
 using std::cin;
 using std::endl;
 
 //Helper function for getpass() It reads in each character to be masked.
+
+// std::string SHA512HashString(const std::string& input)
+// {
+//     CryptoPP::SHA512 hash;
+//     byte digest[ CryptoPP::SHA512::DIGESTSIZE ];
+
+//     hash.CalculateDigest( digest, (byte*) input.c_str(), input.length() );
+
+//     CryptoPP::HexEncoder encoder;
+//     std::string output;
+//     encoder.Attach( new CryptoPP::StringSink( output ) );
+//     encoder.Put( digest, sizeof(digest) );
+//     encoder.MessageEnd();
+
+//     return output;
+// }
+
 int getch() 
 {
     int ch;
@@ -48,7 +69,10 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
     std::string item;
     while(std::getline(ss, item, delim)) 
     {
-        elems.push_back(item.substr(0,32));
+        if(item != "")
+        {
+            elems.push_back(item.substr(0,32));   
+        }
     }
     return elems;
 }
@@ -170,12 +194,22 @@ void* formPacket(char packet[], std::string command, std::string username, std::
     len++;
     // Packet data has now been added. For the remaining amount of data, fill in random data.
     
+    //std::string randomString = getRandom(1023 - 33 - len);
     std::string randomString = getRandom(1023 - len);
     for(unsigned int i = 0; i < randomString.length(); ++i)
     {
         packet[len + i] = randomString[i];
     }
+
+    // std::string hashString = SHA512HashString((std::string) packet);
+
+    // packet[1023 - 34] = delim;
     
+    // for(unsigned int i = 990; i < hashString.length(); ++i)
+    // {
+    //     packet[i] = hashString[i];
+    // }
+
     packet[1023] = '\0';
 }
 
@@ -218,13 +252,14 @@ int main(int argc, char* argv[])
     std::string cardHash = "";
     std::string pin = "";
     std::string atmNonce = getRandom(32);
-    std::string bankNonce = "";
+    std::string bankNonce = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     char packet[1024];
     char buf[80];
     int length;
     int sendPacket;
     std::vector<std::string> bufArray;
-
+    int timeout = 0;
+    
     //input loop   
     while(1)
     {
@@ -246,7 +281,19 @@ int main(int argc, char* argv[])
         //input parsing
         if(bufArray.size() >= 1 && ((std::string) "") != bufArray[0])
         {
-            command = bufArray[0];
+            // cout << "[atm] Time since last command: " << time(NULL) - timeout << endl;
+            
+            if(timeout == 0 || time(NULL) - timeout <= 90)
+            { 
+                // Timeout has to be less than 90 seconds to continue
+                command = bufArray[0];
+            }
+            else
+            {
+                command = "timeout";
+            }
+            
+            timeout = time(NULL);
             
             // There exists a command, check the command
             if(((std::string) "login") == command) //if command is 'login'
@@ -356,14 +403,18 @@ int main(int argc, char* argv[])
                     cout << "User not logged in.  \n";
                 }
             } 
-            else if(((std::string) "logout") == command)
+            else if(((std::string) "logout") == command || ((std::string) "timeout") == command)
             {   
                 if(userLoggedIn)
                 {
-                    if(bufArray.size() == 1)
+                    if(bufArray.size() == 1 || ((std::string) "timeout") == command)
                     {
+                        if(((std::string) "timeout") == command)
+                        {
+                            cout << "Timeout: user inactivity has caused a timeout, the current user has now been logged out.  \n";
+                        }
                         sendPacket = 1; // Send packet because valid command
-                        formPacket(packet, command, username, cardHash, pin, "NOT USED", "NOT USED", atmNonce, bankNonce);
+                        formPacket(packet, "logout", username, cardHash, pin, "NOT USED", "NOT USED", atmNonce, bankNonce);
 
                         userLoggedIn = false; username = ""; cardHash = ""; pin = "";
                     }
@@ -387,7 +438,9 @@ int main(int argc, char* argv[])
                 //This block sends the message through the proxy to the bank. 
                 //There are two send messages - 1) packet length and 2) actual packet
                 length = strlen(packet);
+                
                 //cout << "[atm] Sending ATM Packet (Length: " << length << "):" << (std::string) packet << endl;
+                
                 if(sizeof(int) != send(sock, &length, sizeof(int), 0))
                 {
                     printf("fail to send packet length\n");
@@ -433,7 +486,7 @@ int main(int argc, char* argv[])
                             if(((std::string) "login") == command) //if command is 'login'
                             {   
                                 userLoggedIn = true;
-                                cout << bufArray[1];
+                                cout << "User logged in successfully.";
                             } 
                             else if(((std::string) "balance") == command) //if command is 'login'
                             { 
@@ -450,9 +503,11 @@ int main(int argc, char* argv[])
                             else if(((std::string) "logout") == command) //if command is 'login'
                             {   
                                 cout << bufArray[1];
+                                timeout = 0;
                             }
                             else if(((std::string) "error") == command) //if command is 'login'
                             {   
+                                userLoggedIn = false; username = ""; cardHash = ""; pin = "";
                                 cout << bufArray[1];
                             }
                         }
