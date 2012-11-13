@@ -12,6 +12,9 @@ class Account {
 		int loginAttempts;
 		int timeout;
 		bool logged_in;
+		float dailyDeposit;
+		float dailyWithdraw;
+		float dailyTransfer;
 
 	public:
 		Account () {}
@@ -24,6 +27,9 @@ class Account {
 			loginAttempts = 0;
 			timeout = 0;
 			logged_in = false;
+			dailyDeposit = 0;
+			dailyWithdraw = 0;
+			dailyTransfer = 0;
 		}
 		string get_un () { return username; }
 		int get_account () { return accountNumber; }
@@ -36,6 +42,12 @@ class Account {
 		bool get_logged_in () { return logged_in; }
 		void set_logged_in_true () { logged_in = true; }
 		void set_logged_in_false () { logged_in = false; }
+		float get_deposit () { return dailyDeposit; }
+		float get_withdraw () { return dailyWithdraw; }
+		float get_transfer () { return dailyTransfer; }
+		void increase_deposit (float val) { dailyDeposit += val; }
+		void increase_withdraw (float val) { dailyWithdraw += val; }
+		void increase_transfer (float val) { dailyTransfer += val; }
 }; 	
 
 static Account alice ("alice", 12345, 1234, 100.00);

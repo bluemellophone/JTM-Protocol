@@ -99,8 +99,9 @@ bool processWithdraw (std::vector<std::string> info)
 
 	std::vector<Account>::iterator it;
 	for (it = Database.begin(); it != Database.end(); it++) {
-		if (it->get_un() == info.at(1) && it->get_logged_in() && b <= it->get_balance()) {
+		if (it->get_un() == info.at(1) && it->get_logged_in() && b <= it->get_balance() && it->get_withdraw() + b <= 1000.00) {
 			it->reduce_balance(b);
+			it->increase_withdraw (b);
 			return true;
 		}
 	}
@@ -109,7 +110,6 @@ bool processWithdraw (std::vector<std::string> info)
 
 bool processTransfer (std::vector<std::string> info)
 {
-	//amount 4, rcpt 5
 	float b = (float)atof(info.at(4).c_str());
 	if (b > 1000.00) {
 		return false;
@@ -117,8 +117,9 @@ bool processTransfer (std::vector<std::string> info)
 
 	std::vector<Account>::iterator it;
 	for (it = Database.begin(); it != Database.end(); it++) {
-		if (it->get_un() == info.at(1) && it->get_logged_in() && b <= it->get_balance()) {
+		if (it->get_un() == info.at(1) && it->get_logged_in() && b <= it->get_balance() && it->get_transfer() + b <= 1000.00) {
 			it->reduce_balance(b);
+			it->increase_transfer (b);
 			std::vector<Account>::iterator foo;
 			for (foo = Database.begin(); foo != Database.end(); foo++) {
 				if (foo->get_un() == info.at(5)) {
@@ -130,6 +131,20 @@ bool processTransfer (std::vector<std::string> info)
 	}
 	return false;
 }
+
+bool logout (std::vector<std::string> info) 
+{
+	std::vector<Account>::iterator it;
+
+	for (it = Database.begin(); it != Database.end(); it++) {
+		if (it->get_un() == info.at(1) && it->get_logged_in()) {
+			it->set_logged_in_false();
+			return true;
+		}
+	}
+	return false;
+}
+
 int main(int argc, char* argv[])
 {
 	srand(812301230);
@@ -242,7 +257,7 @@ void* client_thread(void* arg)
 			recievedHash = recievedHash.substr(0, recievedHash.length() - 1);
 			recievedHashedData = bufArray[0] + "," + bufArray[1] + "," + bufArray[2] + "," + bufArray[3] + "," + bufArray[4] + "," + bufArray[5] + "," + bufArray[6] + "," + bufArray[7] + "," + bufArray[8];
 			calculatedHash = SHA512HashString(recievedHashedData);
-			
+
 			//cout << recievedHash << " (Length " << recievedHash.length() << ")" << endl;
 			//cout << calculatedHash << " (Length " << calculatedHash.length() << ")" << endl;
 			if(recievedHash == calculatedHash)
@@ -324,7 +339,7 @@ void* client_thread(void* arg)
 			break;
 		}
 	}
-	
+
 	//printf("[bank] client ID #%d disconnected\n", csock);
 	printf("[bank] client ID #%ld disconnected\n", csock);
 
