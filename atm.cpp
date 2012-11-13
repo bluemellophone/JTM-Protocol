@@ -49,7 +49,7 @@ std::string getPin(const char *prompt)
     return pin;
 }
 
-void* formPacket(char packet[], std::string command, std::string username, std::string cardHash, std::string pin, std::string item1, std::string item2, std::string atmNonce, std::string bankNonce)
+void* formATMPacket(char packet[], std::string command, std::string username, std::string cardHash, std::string pin, std::string item1, std::string item2, std::string atmNonce, std::string bankNonce)
 {
     char delim = ',';
     packet[0] = '\0';
@@ -99,7 +99,7 @@ void* formPacket(char packet[], std::string command, std::string username, std::
     len++;
     for(unsigned int i = 0; i < atmNonce.length(); ++i)
     {
-        packet[len + i] = atmNonce[i];   //add item2 to packet
+        packet[len + i] = atmNonce[i];   //add atm nonce to packet
     }
     
     len += atmNonce.length();
@@ -107,7 +107,7 @@ void* formPacket(char packet[], std::string command, std::string username, std::
     len++;
     for(unsigned int i = 0; i < bankNonce.length(); ++i)
     {
-        packet[len + i] = bankNonce[i];   //add item2 to packet
+        packet[len + i] = bankNonce[i];   //add bank nonce to packet
     }
     
     len += bankNonce.length();
@@ -173,6 +173,9 @@ int main(int argc, char* argv[])
     std::string pin = "";
     std::string atmNonce = getRandom(32);
     std::string bankNonce = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    std::string recievedHash;
+    std::string recievedHashedData;
+    std::string calculatedHash;
     char packet[1024];
     char buf[80];
     int length;
@@ -238,7 +241,7 @@ int main(int argc, char* argv[])
                             pin = getPin("PIN: ");
                             pin = pin.substr(0,6);
                           
-                            formPacket(packet, command, username, cardHash, pin, "NOT USED", "NOT USED", atmNonce, bankNonce);
+                            formATMPacket(packet, command, username, cardHash, pin, "NOT USED", "NOT USED", atmNonce, bankNonce);
                         }
                         else
                         {
@@ -255,7 +258,7 @@ int main(int argc, char* argv[])
                     cout << "User already logged in.  Due to this action, the current user has now been logged out.  \n"; 
 
                     sendPacket = 1; // Send packet because valid command
-                    formPacket(packet, "logout", username, cardHash, pin, "NOT USED", "NOT USED", atmNonce, bankNonce);
+                    formATMPacket(packet, "logout", username, cardHash, pin, "NOT USED", "NOT USED", atmNonce, bankNonce);
 
                     userLoggedIn = false; username = ""; cardHash = ""; pin = "";
                 }
@@ -269,7 +272,7 @@ int main(int argc, char* argv[])
                     if(bufArray.size() == 1)
                     {
                         sendPacket = 1; // Send packet because valid command
-                        formPacket(packet, command, username, cardHash, pin, "NOT USED", "NOT USED", atmNonce, bankNonce);
+                        formATMPacket(packet, command, username, cardHash, pin, "NOT USED", "NOT USED", atmNonce, bankNonce);
                     }
                     else
                     {
@@ -290,7 +293,7 @@ int main(int argc, char* argv[])
                     if(bufArray.size() == 2)
                     {
                         sendPacket = 1;
-                        formPacket(packet, command, username, cardHash, pin, bufArray[1], "NOT USED", atmNonce, bankNonce);
+                        formATMPacket(packet, command, username, cardHash, pin, bufArray[1], "NOT USED", atmNonce, bankNonce);
                     }
                     else
                     {
@@ -311,7 +314,7 @@ int main(int argc, char* argv[])
                     if(bufArray.size() == 3)
                     {
                         sendPacket = 1;
-                        formPacket(packet, command, username, cardHash, pin, bufArray[1], bufArray[2], atmNonce, bankNonce);
+                        formATMPacket(packet, command, username, cardHash, pin, bufArray[1], bufArray[2], atmNonce, bankNonce);
                     }
                     else
                     {
@@ -334,7 +337,7 @@ int main(int argc, char* argv[])
                             cout << "Timeout: user inactivity has caused a timeout, the current user has now been logged out.  \n";
                         }
                         sendPacket = 1; // Send packet because valid command
-                        formPacket(packet, "logout", username, cardHash, pin, "NOT USED", "NOT USED", atmNonce, bankNonce);
+                        formATMPacket(packet, "logout", username, cardHash, pin, "NOT USED", "NOT USED", atmNonce, bankNonce);
 
                         userLoggedIn = false; username = ""; cardHash = ""; pin = "";
                     }
@@ -401,50 +404,65 @@ int main(int argc, char* argv[])
                     bufArray.clear();
                     bufArray = split((std::string) packet, ',', bufArray);
 
-                    if(bufArray.size() == 5)
+                    if(bufArray.size() == 6)
                     {
-                        if(atmNonce == bufArray[2])
+                        recievedHash = bufArray[5];
+                        recievedHash = recievedHash.substr(0, recievedHash.length() - 1);
+                        recievedHashedData = bufArray[0] + "," + bufArray[1] + "," + bufArray[2] + "," + bufArray[3] + "," + bufArray[4];
+                        calculatedHash = SHA512HashString(recievedHashedData);
+                        
+                        //cout << recievedHash << " (Length " << recievedHash.length() << ")" << endl;
+                        //cout << calculatedHash << " (Length " << calculatedHash.length() << ")" << endl;
+                        if(recievedHash == calculatedHash)
                         {
-                            atmNonce = getRandom(32);
-                            command = bufArray[0];
-                            bankNonce = bufArray[3];
-                            if(((std::string) "login") == command) //if command is 'login'
-                            {   
-                                userLoggedIn = true;
-                                cout << "User logged in successfully.";
-                            } 
-                            else if(((std::string) "balance") == command) //if command is 'balancd'
-                            { 
-                                cout << bufArray[1];
-                            } 
-                            else if(((std::string) "withdraw") == command) //if command is 'withdraw'
-                            {   
-                                cout << bufArray[1];
+                            if(atmNonce == bufArray[2])
+                            {
+                                atmNonce = getRandom(32);
+                                command = bufArray[0];
+                                bankNonce = bufArray[3];
+                                if(((std::string) "login") == command) //if command is 'login'
+                                {   
+                                    userLoggedIn = true;
+                                    cout << "User logged in successfully.";
+                                } 
+                                else if(((std::string) "balance") == command) //if command is 'balancd'
+                                { 
+                                    cout << bufArray[1];
+                                } 
+                                else if(((std::string) "withdraw") == command) //if command is 'withdraw'
+                                {   
+                                    cout << bufArray[1];
+                                }
+                                else if(((std::string) "transfer") == command) //if command is 'transfer'
+                                {   
+                                    cout << bufArray[1];
+                                }  
+                                else if(((std::string) "logout") == command) //if command is 'logout'
+                                {   
+                                    cout << bufArray[1];
+                                    timeout = 0;
+                                }
                             }
-                            else if(((std::string) "transfer") == command) //if command is 'transfer'
-                            {   
-                                cout << bufArray[1];
-                            }  
-                            else if(((std::string) "logout") == command) //if command is 'logout'
-                            {   
-                                cout << bufArray[1];
-                                timeout = 0;
+                            else
+                            {
+                                cout << "Error.  Bank Nonce not valid";
+                                if(((std::string) "error") == bufArray[0]) //if command is 'error'
+                                {   
+                                    userLoggedIn = false; username = ""; cardHash = ""; pin = "";
+                                    cout << bufArray[1];
+                                }
                             }
+
                         }
                         else
                         {
-                            cout << "Error.  Bank Nonce not valid.  ";
-                            if(((std::string) "error") == bufArray[0]) //if command is 'error'
-                            {   
-                                userLoggedIn = false; username = ""; cardHash = ""; pin = "";
-                                cout << bufArray[1];
-                            }
+                            cout << "Error.  Bank Hash not valid";
                         }
                     } 
                     else
                     {
                         // Error: Command sent from ATM not recognized.
-                        cout << "Error.  Bank Response not valid " << bufArray.size();
+                        cout << "Error.  Bank Response not valid";
                     }
 
                     cout << endl;

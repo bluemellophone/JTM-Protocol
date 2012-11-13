@@ -9,6 +9,59 @@
 void* client_thread(void* arg);
 void* console_thread(void* arg);
 
+
+void* formBankPacket(char packet[], std::string command, std::string status, std::string atmNonce, std::string bankNonce)
+{
+    char delim = ',';
+    packet[0] = '\0';
+    strcpy(packet,command.c_str());
+    packet[command.length()] = delim;
+    
+    int len = command.length() + 1;
+    for(unsigned int i = 0; i < status.length(); ++i)
+    {
+        packet[len + i] = status[i];  //add username to packet
+    }
+
+    len += status.length();
+    packet[len] = delim;
+    len++;
+    for(unsigned int i = 0; i < atmNonce.length(); ++i)
+    {
+        packet[len + i] = atmNonce[i];   //add atm nonce to packet
+    }
+    
+    len += atmNonce.length();
+    packet[len] = delim;
+    len++;
+    for(unsigned int i = 0; i < bankNonce.length(); ++i)
+    {
+        packet[len + i] = bankNonce[i];   //add bank nonce to packet
+    }
+    
+    len += bankNonce.length();
+    packet[len] = delim;
+    len++;
+    // Packet data has now been added. For the remaining amount of data, fill in random data.
+    
+    std::string randomString = getRandom(1023 - 128 - 1 - len);
+    for(unsigned int i = 0; i < randomString.length(); ++i)
+    {
+        packet[len + i] = randomString[i];
+    }
+    len += randomString.length();
+    packet[len] = delim;
+    len++;
+
+    std::string hashString = SHA512HashString((std::string) command + "," + status + "," + atmNonce + "," + bankNonce + "," + randomString);    
+    for(unsigned int i = 0; i < hashString.length(); ++i)
+    {
+        packet[len + i] = hashString[i];
+    }
+
+    packet[1023] = '\0';
+}
+
 /* Begin definition of account functions */
 
 bool login (std::vector<std::string> info) 
@@ -145,7 +198,6 @@ void* client_thread(void* arg)
 	//input loop
 	int length;
 	char packet[1024];
-	std::string response = "";
 	std::string bankNonce = "";
 	std::vector<std::string> bufArray;
 	std::string command;
@@ -176,7 +228,7 @@ void* client_thread(void* arg)
 		}
 		else if(length == 1023)
 		{
-			printf("[bank] Recieved ATM Packet (Length %d): %s\n", (int) ((std::string) packet).length(), packet);
+			//printf("[bank] Recieved ATM Packet (Length %d): %s\n", (int) ((std::string) packet).length(), packet);
 			bufArray = split((std::string) packet, ',', bufArray);
 			command = bufArray[0];
 		}
@@ -199,85 +251,66 @@ void* client_thread(void* arg)
 				{
 					bankNonce = getRandom(32);
 
-					// Don't put commas in responses!!! 
-
 					if(((std::string) "login") == command) //if command is 'login'
 					{   
 						bool flag = login (bufArray);
 						if (flag) {
-							response = command + "," + "login of " + bufArray[1];
+							formBankPacket(packet, command, "login of " + bufArray[1], bufArray[6], bankNonce);
 						}
 						else {
-							response = "error,ATM Command not valid,0,0";
-							response += "," + getRandom (1023 - 2 - response.length());
+							formBankPacket(packet, "error", "ATM Login not valid", bufArray[6], bankNonce);
 						}
 					} 
 					else if(((std::string) "balance") == command) //if command is 'login'
 					{   
 						float flag = checkBalance (bufArray);
 						if (flag >= 0) {
-							response = command + "," + "balance of " + bufArray[1];
+							formBankPacket(packet, command, "balance of " + bufArray[1], bufArray[6], bankNonce);
 						}
 						else {
-							response = "error,ATM Command not valid,0,0";
-							response += "," + getRandom (1023 - 2 - response.length());
+							formBankPacket(packet, "error", "ATM Balance not valid", bufArray[6], bankNonce);
 						}
 					} 
 					else if(((std::string) "withdraw") == command) //if command is 'login'
 					{   
 						bool flag = processWithdraw (bufArray);
 						if (flag) {
-							response = command + "," + "withdraw of " + bufArray[1] + "  amount: " + bufArray[4];
+							formBankPacket(packet, command, "withdraw of " + bufArray[1] + "  amount: " + bufArray[4], bufArray[6], bankNonce);
 						}
 						else {
-							response = "error,ATM Command not valid,0,0";
-							response += "," + getRandom (1023 - 2 - response.length());					
+							formBankPacket(packet, "error", "ATM Withdraw not valid", bufArray[6], bankNonce);			
 						}
 					}
 					else if(((std::string) "transfer") == command) //if command is 'login'
 					{   
 						bool flag = processTransfer (bufArray);
 						if (flag) {
-							response = command + "," + "transfer of " + bufArray[1] + "  amount: " + bufArray[4] + "  recipient: " + bufArray[5];
+							formBankPacket(packet, command, "transfer of " + bufArray[1] + "  amount: " + bufArray[4] + "  recipient: " + bufArray[5], bufArray[6], bankNonce);
 						}
 						else {
-							response = "error,ATM Command not valid,0,0";
-							response += "," + getRandom (1023 - 2 - response.length());
+							formBankPacket(packet, "error", "ATM Transfer not valid", bufArray[6], bankNonce);
 						}
 					}  
 					else if(((std::string) "logout") == command) //if command is 'login'
 					{   
-						response = command + "," + "logout of " + bufArray[1];
+						formBankPacket(packet, command, "logout of " + bufArray[1], bufArray[6], bankNonce);
 					}
-
-					response += "," + bufArray[6] + "," + bankNonce;
-					response += "," + getRandom(1023 - 2 - response.length());
 				}
 				else
 				{
-					response = "error,ATM Nonce not valid,0,0";	
-					response += "," + getRandom(1023 - 2 - response.length());
+					formBankPacket(packet, "error", "ATM Nonce not valid", bufArray[6], bankNonce);
 				}
 			}
 			else
 			{
-				response = "error,ATM Hash not valid,0,0";	
-				response += "," + getRandom(1023 - 2 - response.length());
+				formBankPacket(packet, "error", "ATM Hash not valid", bufArray[6], bankNonce);
 			}
 		} 
 		else
 		{
 			// Error: Command sent from ATM not recognized.
-			response = "error,ATM Command not valid,0,0";	
-			response += "," + getRandom(1023 - 2 - response.length());
+			formBankPacket(packet, "error", "ATM Command not valid", bufArray[6], bankNonce);
 		}
-
-		// Put response into the packet
-		for(int i = 0; i < response.length(); i++)
-		{
-			packet[i] = response[i];
-		}
-		packet[response.length()] = '\0';
 
 		//send the new packet back to the client
 		if(sizeof(int) != send(csock, &length, sizeof(int), 0))
