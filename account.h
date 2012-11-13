@@ -11,6 +11,7 @@ class Account {
 		float balance;
 		int loginAttempts;
 		int timeout;
+		bool logged_in;
 
 	public:
 		Account () {}
@@ -22,15 +23,19 @@ class Account {
 			balance = b;
 			loginAttempts = 0;
 			timeout = 0;
+			logged_in = false;
 		}
 		string get_un () { return username; }
 		int get_account () { return accountNumber; }
 		int get_pin () { return pin; }
 		float get_balance () { return balance; }
-		int get_login () { return loginAttempts; }
+		int get_loginAttempts () { return loginAttempts; }
 		void increase_balance (float b) { balance += b; }
 		void reduce_balance (float b) { balance -= b; }
 		void increment_login () { loginAttempts++; }
+		bool get_logged_in () { return logged_in; }
+		void set_logged_in_true () { logged_in = true; }
+		void set_logged_in_false () { logged_in = false; }
 }; 	
 
 static Account alice ("alice", 12345, 1234, 100.00);
