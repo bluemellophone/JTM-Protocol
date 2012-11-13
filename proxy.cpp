@@ -2,15 +2,7 @@
 	@file proxy.cpp
 	@brief Top level proxy implementation file
  */
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <pthread.h>
-#include <string.h>
+#include "util.h"
 
 void* client_thread(void* arg);
 

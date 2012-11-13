@@ -99,7 +99,7 @@ public:
 	{
 		// if (n < (size_t)MIN_KEYLENGTH)
 		// 	return MIN_KEYLENGTH;
-		else if (n > (size_t)MAX_KEYLENGTH)
+		if (n > (size_t)MAX_KEYLENGTH)
 			return (size_t)MAX_KEYLENGTH;
 		else
 		{

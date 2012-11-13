@@ -3,48 +3,7 @@
     @brief Top level ATM implementation file
  */
 
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <stdlib.h>
-#include <time.h>
-#include <stdio.h>
-#include <string.h>
-#include <fstream>
-#include <streambuf>
-#include <iostream>
-#include <string>
-#include <vector>
-#include <sstream>
-#include <iterator>
-#include <termios.h>
-#include "cryptlib.h"
-#include "sha.h"
-#include "hex.h"
-
-using std::cout;
-using std::cin;
-using std::endl;
-
-//Helper function for getpass() It reads in each character to be masked.
-
-std::string SHA512HashString(const std::string& input)
-{
-    CryptoPP::SHA512 hash;
-    byte digest[ CryptoPP::SHA512::DIGESTSIZE ];
-
-    hash.CalculateDigest( digest, (byte*) input.c_str(), input.length() );
-
-    CryptoPP::HexEncoder encoder;
-    std::string output;
-    encoder.Attach( new CryptoPP::StringSink( output ) );
-    encoder.Put( digest, sizeof(digest) );
-    encoder.MessageEnd();
-
-    return output;
-}
+#include "util.h"
 
 int getch() 
 {
@@ -62,71 +21,33 @@ int getch()
     return ch;
 }
 
-// This function returns a vector of strings, which is the prompt split by the delim.
-std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) 
+std::string getPin(const char *prompt)
 {
-    std::stringstream ss(s+' ');
-    std::string item;
-    while(std::getline(ss, item, delim)) 
-    {
-        if(item != "")
-        {
-            elems.push_back(item.substr(0,32));   
-        }
-    }
-    return elems;
-}
-
-std::string getRandom(int length)
-{   
-    std::string retStr = "";
-
-    for(unsigned int i = 0; i < length; ++i)
-    {
-        retStr += ((rand() % 74) + '0');
-    }
-    
-    return retStr;
-}
-
-//This function prompts for and receives the user-entered PIN (masked with *'s)
-std::string getpass(const char *prompt, bool show_asterisk=true)
-{
-    const char BACKSPACE = 127;
-    const char RETURN = 10;
-
-    std::string password;
+    std::string pin;
     unsigned char ch = 0;
 
     cout << prompt;
-    while((ch=getch()) != RETURN)
+    while((ch=getch()) != 10) // Enter
     {
-        if(ch == BACKSPACE)
+        if(ch == 127) // Backspace
         {
-            if(password.length() != 0)
+            if(pin.length() != 0)
             {
-                if(show_asterisk)
-                {
-                    cout <<"\b \b";
-                }
-                password.resize(password.length() - 1);
+                cout <<"\b \b";
+                pin.resize(pin.length() - 1);
             }
         }
         else
         {
-            password += ch;
-            if(show_asterisk)
-            {
-                cout << '*';
-            }
+            pin += ch;
+            cout << '*';
         }
     }
 
     printf("\n");
   
-    return password;
+    return pin;
 }
-
 
 void* formPacket(char packet[], std::string command, std::string username, std::string cardHash, std::string pin, std::string item1, std::string item2, std::string atmNonce, std::string bankNonce)
 {
@@ -194,20 +115,19 @@ void* formPacket(char packet[], std::string command, std::string username, std::
     len++;
     // Packet data has now been added. For the remaining amount of data, fill in random data.
     
-    std::string randomString = getRandom(1023 - 33 - len);
-    //std::string randomString = getRandom(1023 - len);
+    std::string randomString = getRandom(1023 - 128 - 1 - len);
     for(unsigned int i = 0; i < randomString.length(); ++i)
     {
         packet[len + i] = randomString[i];
     }
+    len += randomString.length();
+    packet[len] = delim;
+    len++;
 
-    std::string hashString = SHA512HashString((std::string) packet);
-
-    packet[1023 - 34] = delim;
-    
-    for(unsigned int i = 990; i < hashString.length(); ++i)
+    std::string hashString = SHA512HashString((std::string) command + "," + username + "," + cardHash + "," + pin + "," + item1 + "," + item2 + "," + atmNonce + "," + bankNonce + "," + randomString);    
+    for(unsigned int i = 0; i < hashString.length(); ++i)
     {
-        packet[i] = hashString[i];
+        packet[len + i] = hashString[i];
     }
 
     packet[1023] = '\0';
@@ -281,7 +201,7 @@ int main(int argc, char* argv[])
         //input parsing
         if(bufArray.size() >= 1 && ((std::string) "") != bufArray[0])
         {
-            // cout << "[atm] Time since last command: " << time(NULL) - timeout << endl;
+            //cout << "[atm] Time since last command: " << time(NULL) - timeout << endl;
             
             if(timeout == 0 || time(NULL) - timeout <= 90)
             { 
@@ -309,13 +229,13 @@ int main(int argc, char* argv[])
                             sendPacket = 1; // Send packet because valid command
                             username = bufArray[1];
 
-                            //obtain card hash
+                            // obtain card hash
                             std::string temp((std::istreambuf_iterator<char>(cardFile)),std::istreambuf_iterator<char>());
                             cardHash = temp;
                             cardHash = cardHash.substr(0,32);
                             
-                            //this block prompts for PIN for login and puts it in the pin var
-                            pin = getpass("PIN: ", true);
+                            // obtain pin form user
+                            pin = getPin("PIN: ");
                             pin = pin.substr(0,6);
                           
                             formPacket(packet, command, username, cardHash, pin, "NOT USED", "NOT USED", atmNonce, bankNonce);
@@ -340,7 +260,7 @@ int main(int argc, char* argv[])
                     userLoggedIn = false; username = ""; cardHash = ""; pin = "";
                 }
             } 
-            else if(((std::string) "balance") == command) //if command is 'login'
+            else if(((std::string) "balance") == command) //if command is 'balance'
             {   
                 //this block prompts for 30 char username for login and puts it in the username var
                 // Continue as long as there is only one argument.
@@ -361,7 +281,7 @@ int main(int argc, char* argv[])
                     cout << "User not logged in.  \n";
                 }
             } 
-            else if(((std::string) "withdraw") == command) //if command is 'login'
+            else if(((std::string) "withdraw") == command) //if command is 'withdraw'
             {   
                 //this block prompts for 30 char username for login and puts it in the username var
                 // Continue as long as there is only one argument.
@@ -382,7 +302,7 @@ int main(int argc, char* argv[])
                     cout << "User not logged in.  \n";
                 }
             } 
-            else if(((std::string) "transfer") == command) //if command is 'login'
+            else if(((std::string) "transfer") == command) //if command is 'transfer'
             {   
                 //this block prompts for 30 char username for login and puts it in the username var
                 // Continue as long as there is only one argument.
@@ -435,11 +355,16 @@ int main(int argc, char* argv[])
 
             if(sendPacket)
             {
+
+                //encryptAESPacket(packet);
+                
+
+
                 //This block sends the message through the proxy to the bank. 
                 //There are two send messages - 1) packet length and 2) actual packet
                 length = strlen(packet);
                 
-                //cout << "[atm] Sending ATM Packet (Length: " << length << "):" << (std::string) packet << endl;
+                //cout << "[atm] Sending ATM Packet (Length: " << length << "): " << (std::string) packet << endl;
                 
                 if(sizeof(int) != send(sock, &length, sizeof(int), 0))
                 {
@@ -488,32 +413,32 @@ int main(int argc, char* argv[])
                                 userLoggedIn = true;
                                 cout << "User logged in successfully.";
                             } 
-                            else if(((std::string) "balance") == command) //if command is 'login'
+                            else if(((std::string) "balance") == command) //if command is 'balancd'
                             { 
                                 cout << bufArray[1];
                             } 
-                            else if(((std::string) "withdraw") == command) //if command is 'login'
+                            else if(((std::string) "withdraw") == command) //if command is 'withdraw'
                             {   
                                 cout << bufArray[1];
                             }
-                            else if(((std::string) "transfer") == command) //if command is 'login'
+                            else if(((std::string) "transfer") == command) //if command is 'transfer'
                             {   
                                 cout << bufArray[1];
                             }  
-                            else if(((std::string) "logout") == command) //if command is 'login'
+                            else if(((std::string) "logout") == command) //if command is 'logout'
                             {   
                                 cout << bufArray[1];
                                 timeout = 0;
                             }
-                            else if(((std::string) "error") == command) //if command is 'login'
+                        }
+                        else
+                        {
+                            cout << "Error.  Bank Nonce not valid.  ";
+                            if(((std::string) "error") == bufArray[0]) //if command is 'error'
                             {   
                                 userLoggedIn = false; username = ""; cardHash = ""; pin = "";
                                 cout << bufArray[1];
                             }
-                        }
-                        else
-                        {
-                            cout << "Error.  Bank Nonce not valid";
                         }
                     } 
                     else
