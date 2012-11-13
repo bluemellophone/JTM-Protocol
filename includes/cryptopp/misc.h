@@ -411,11 +411,11 @@ std::string IntToString(T a, unsigned int base = 10)
 	if (a == 0)
 		return "0";
 	bool negate = false;
-	if (a < 0)
-	{
-		negate = true;
-		a = 0-a;	// VC .NET does not like -a
-	}
+	// if (a < 0)
+	// {
+	// 	negate = true;
+	// 	a = 0-a;	// VC .NET does not like -a
+	// }
 	std::string result;
 	while (a > 0)
 	{

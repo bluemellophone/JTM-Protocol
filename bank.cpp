@@ -109,11 +109,11 @@ int main(int argc, char* argv[])
 void* client_thread(void* arg)
 {
 
-	int csock = (int)arg;
-	//long unsigned int csock = (long unsigned int)arg;
+	//int csock = (int)arg;
+	long unsigned int csock = (long unsigned int)arg;
 	
-	printf("[bank] client ID #%d connected\n", csock);
-	//printf("[bank] client ID #%ld connected\n", csock);
+	//printf("[bank] client ID #%d connected\n", csock);
+	printf("[bank] client ID #%ld connected\n", csock);
 	
 	//input loop
 	int length;
@@ -218,8 +218,8 @@ void* client_thread(void* arg)
 		}
 	}
 
-	printf("[bank] client ID #%d disconnected\n", csock);
-	//printf("[bank] client ID #%ld disconnected\n", csock);
+	//printf("[bank] client ID #%d disconnected\n", csock);
+	printf("[bank] client ID #%ld disconnected\n", csock);
 	
 	close(csock);
 	return NULL;

@@ -1,7 +1,7 @@
 	CC=g++
-	CFLAGS=-m32
+	CFLAGS=-I./includes/cryptopp -L./includes/cryptopp -lcryptopp 
 
 all:
-	$(CC) atm.cpp -o atm $(CFLAGS)
-	$(CC) proxy.cpp -o proxy -lpthread $(CFLAGS)
-	$(CC) bank.cpp -o bank -lpthread $(CFLAGS)
+	$(CC) $(CFLAGS) atm.cpp -o atm
+	$(CC) $(CFLAGS) proxy.cpp -o proxy -lpthread
+	$(CC) $(CFLAGS) bank.cpp -o bank -lpthread

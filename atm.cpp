@@ -2,6 +2,7 @@
     @file atm.cpp
     @brief Top level ATM implementation file
  */
+
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -19,10 +20,9 @@
 #include <sstream>
 #include <iterator>
 #include <termios.h>
-// #include "includes/cryptopp/dll.h"
-// #include "includes/cryptopp/sha.h"
-// #include "includes/cryptopp/hex.h"
-
+#include "cryptlib.h"
+#include "sha.h"
+#include "hex.h"
 
 using std::cout;
 using std::cin;
@@ -30,21 +30,21 @@ using std::endl;
 
 //Helper function for getpass() It reads in each character to be masked.
 
-// std::string SHA512HashString(const std::string& input)
-// {
-//     CryptoPP::SHA512 hash;
-//     byte digest[ CryptoPP::SHA512::DIGESTSIZE ];
+std::string SHA512HashString(const std::string& input)
+{
+    CryptoPP::SHA512 hash;
+    byte digest[ CryptoPP::SHA512::DIGESTSIZE ];
 
-//     hash.CalculateDigest( digest, (byte*) input.c_str(), input.length() );
+    hash.CalculateDigest( digest, (byte*) input.c_str(), input.length() );
 
-//     CryptoPP::HexEncoder encoder;
-//     std::string output;
-//     encoder.Attach( new CryptoPP::StringSink( output ) );
-//     encoder.Put( digest, sizeof(digest) );
-//     encoder.MessageEnd();
+    CryptoPP::HexEncoder encoder;
+    std::string output;
+    encoder.Attach( new CryptoPP::StringSink( output ) );
+    encoder.Put( digest, sizeof(digest) );
+    encoder.MessageEnd();
 
-//     return output;
-// }
+    return output;
+}
 
 int getch() 
 {
@@ -194,21 +194,21 @@ void* formPacket(char packet[], std::string command, std::string username, std::
     len++;
     // Packet data has now been added. For the remaining amount of data, fill in random data.
     
-    //std::string randomString = getRandom(1023 - 33 - len);
-    std::string randomString = getRandom(1023 - len);
+    std::string randomString = getRandom(1023 - 33 - len);
+    //std::string randomString = getRandom(1023 - len);
     for(unsigned int i = 0; i < randomString.length(); ++i)
     {
         packet[len + i] = randomString[i];
     }
 
-    // std::string hashString = SHA512HashString((std::string) packet);
+    std::string hashString = SHA512HashString((std::string) packet);
 
-    // packet[1023 - 34] = delim;
+    packet[1023 - 34] = delim;
     
-    // for(unsigned int i = 990; i < hashString.length(); ++i)
-    // {
-    //     packet[i] = hashString[i];
-    // }
+    for(unsigned int i = 990; i < hashString.length(); ++i)
+    {
+        packet[i] = hashString[i];
+    }
 
     packet[1023] = '\0';
 }
