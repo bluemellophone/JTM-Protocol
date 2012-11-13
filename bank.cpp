@@ -2,54 +2,12 @@
   @file bank.cpp
   @brief Top level bank implementation file
  */
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <pthread.h>
-#include <string.h>
-#include <vector>
-#include <sstream>
-#include <iostream>
 
+#include "util.h"
 #include "account.h"
-
-
-using std::cout;
-using std::cin;
-using std::endl;
 
 void* client_thread(void* arg);
 void* console_thread(void* arg);
-
-std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) 
-{
-	std::stringstream ss(s+' ');
-	std::string item;
-	while(std::getline(ss, item, delim)) 
-	{
-		if(item != "")
-		{
-			elems.push_back(item.substr(0,32));   
-		}
-	}
-	return elems;
-}
-
-std::string getRandom(int length)
-{   
-	std::string retStr = "";
-
-	for(unsigned int i = 0; i < length; ++i)
-	{
-		retStr += ((rand() % 74) + '0');
-	}
-
-	return retStr;
-}
 
 /* Begin definition of account functions */
 
@@ -178,11 +136,11 @@ int main(int argc, char* argv[])
 
 void* client_thread(void* arg)
 {
-	int csock = (int)arg;
-	//long unsigned int csock = (long unsigned int)arg;
+	//int csock = (int)arg;
+	long unsigned int csock = (long unsigned int)arg;
 
-	printf("[bank] client ID #%d connected\n", csock);
-	//printf("[bank] client ID #%ld connected\n", csock);
+	//printf("[bank] client ID #%d connected\n", csock);
+	printf("[bank] client ID #%ld connected\n", csock);
 
 	//input loop
 	int length;
@@ -191,9 +149,15 @@ void* client_thread(void* arg)
 	std::string bankNonce = "";
 	std::vector<std::string> bufArray;
 	std::string command;
+	std::string recievedHash;
+	std::string recievedHashedData;
+	std::string calculatedHash;
 	while(1)
 	{
 		bufArray.clear();
+		recievedHash = "";
+		recievedHashedData = "";
+		calculatedHash = "";
 
 		//read the packet from the ATM
 		if(sizeof(int) != recv(csock, &length, sizeof(int), 0))
@@ -212,8 +176,7 @@ void* client_thread(void* arg)
 		}
 		else if(length == 1023)
 		{
-			printf("[bank] Recieved ATM Packet (Length %d): %s\n", length, packet);
-			packet[strlen(packet)-1] = '\0';  //trim off trailing newline
+			printf("[bank] Recieved ATM Packet (Length %d): %s\n", (int) ((std::string) packet).length(), packet);
 			bufArray = split((std::string) packet, ',', bufArray);
 			command = bufArray[0];
 		}
@@ -221,70 +184,84 @@ void* client_thread(void* arg)
 		//TODO: process packet data
 		packet[0] = '\0';
 
-		if(bufArray.size() == 9)
+		if(bufArray.size() == 10)
 		{
-
-			if((bankNonce == "" && bufArray[7] == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") || bankNonce == bufArray[7])
+			recievedHash = bufArray[9];
+			recievedHash = recievedHash.substr(0, recievedHash.length() - 1);
+			recievedHashedData = bufArray[0] + "," + bufArray[1] + "," + bufArray[2] + "," + bufArray[3] + "," + bufArray[4] + "," + bufArray[5] + "," + bufArray[6] + "," + bufArray[7] + "," + bufArray[8];
+			calculatedHash = SHA512HashString(recievedHashedData);
+			
+			//cout << recievedHash << " (Length " << recievedHash.length() << ")" << endl;
+			//cout << calculatedHash << " (Length " << calculatedHash.length() << ")" << endl;
+			if(recievedHash == calculatedHash)
 			{
-				bankNonce = getRandom(32);
+				if((bankNonce == "" && bufArray[7] == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") || bankNonce == bufArray[7])
+				{
+					bankNonce = getRandom(32);
 
-				// Don't put commas in responses!!! 
+					// Don't put commas in responses!!! 
 
-				if(((std::string) "login") == command) //if command is 'login'
-				{   
-					bool flag = login (bufArray);
-					if (flag) {
-						response = command + "," + "login of " + bufArray[1];
+					if(((std::string) "login") == command) //if command is 'login'
+					{   
+						bool flag = login (bufArray);
+						if (flag) {
+							response = command + "," + "login of " + bufArray[1];
+						}
+						else {
+							response = "error,ATM Command not valid,0,0";
+							response += "," + getRandom (1023 - 2 - response.length());
+						}
+					} 
+					else if(((std::string) "balance") == command) //if command is 'login'
+					{   
+						float flag = checkBalance (bufArray);
+						if (flag >= 0) {
+							response = command + "," + "balance of " + bufArray[1];
+						}
+						else {
+							response = "error,ATM Command not valid,0,0";
+							response += "," + getRandom (1023 - 2 - response.length());
+						}
+					} 
+					else if(((std::string) "withdraw") == command) //if command is 'login'
+					{   
+						bool flag = processWithdraw (bufArray);
+						if (flag) {
+							response = command + "," + "withdraw of " + bufArray[1] + "  amount: " + bufArray[4];
+						}
+						else {
+							response = "error,ATM Command not valid,0,0";
+							response += "," + getRandom (1023 - 2 - response.length());					
+						}
 					}
-					else {
-						response = "error,ATM Command not valid,0,0";
-						response += "," + getRandom (1023 - 2 - response.length());
+					else if(((std::string) "transfer") == command) //if command is 'login'
+					{   
+						bool flag = processTransfer (bufArray);
+						if (flag) {
+							response = command + "," + "transfer of " + bufArray[1] + "  amount: " + bufArray[4] + "  recipient: " + bufArray[5];
+						}
+						else {
+							response = "error,ATM Command not valid,0,0";
+							response += "," + getRandom (1023 - 2 - response.length());
+						}
+					}  
+					else if(((std::string) "logout") == command) //if command is 'login'
+					{   
+						response = command + "," + "logout of " + bufArray[1];
 					}
-				} 
-				else if(((std::string) "balance") == command) //if command is 'login'
-				{   
-					float flag = checkBalance (bufArray);
-					if (flag >= 0) {
-						response = command + "," + "balance of " + bufArray[1];
-					}
-					else {
-						response = "error,ATM Command not valid,0,0";
-						response += "," + getRandom (1023 - 2 - response.length());
-					}
-				} 
-				else if(((std::string) "withdraw") == command) //if command is 'login'
-				{   
-					bool flag = processWithdraw (bufArray);
-					if (flag) {
-						response = command + "," + "withdraw of " + bufArray[1] + "  amount: " + bufArray[4];
-					}
-					else {
-						response = "error,ATM Command not valid,0,0";
-						response += "," + getRandom (1023 - 2 - response.length());					
-					}
+
+					response += "," + bufArray[6] + "," + bankNonce;
+					response += "," + getRandom(1023 - 2 - response.length());
 				}
-				else if(((std::string) "transfer") == command) //if command is 'login'
-				{   
-					bool flag = processTransfer (bufArray);
-					if (flag) {
-						response = command + "," + "transfer of " + bufArray[1] + "  amount: " + bufArray[4] + "  recipient: " + bufArray[5];
-					}
-					else {
-						response = "error,ATM Command not valid,0,0";
-						response += "," + getRandom (1023 - 2 - response.length());
-					}
-				}  
-				else if(((std::string) "logout") == command) //if command is 'login'
-				{   
-					response = command + "," + "logout of " + bufArray[1];
+				else
+				{
+					response = "error,ATM Nonce not valid,0,0";	
+					response += "," + getRandom(1023 - 2 - response.length());
 				}
-
-				response += "," + bufArray[6] + "," + bankNonce;
-				response += "," + getRandom(1023 - 2 - response.length());
 			}
 			else
 			{
-				response = "error,ATM Nonce not valid,0,0";	
+				response = "error,ATM Hash not valid,0,0";	
 				response += "," + getRandom(1023 - 2 - response.length());
 			}
 		} 
@@ -315,8 +292,8 @@ void* client_thread(void* arg)
 		}
 	}
 	
-	printf("[bank] client ID #%d disconnected\n", csock);
-	//printf("[bank] client ID #%ld disconnected\n", csock);
+	//printf("[bank] client ID #%d disconnected\n", csock);
+	printf("[bank] client ID #%ld disconnected\n", csock);
 
 	close(csock);
 	return NULL;
@@ -362,7 +339,7 @@ void* console_thread(void* arg)
 				}
 				else
 				{
-					cout << "Usage: deposit [username]\n";
+					cout << "Usage: balance [username]\n";
 				}
 			} 
 			else

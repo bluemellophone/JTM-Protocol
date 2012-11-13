@@ -25,10 +25,10 @@ Transfer Limit = $1000 per day
 
 --------------------- Project Data Structures ---------------------
 
-ATM Message = Command, Username Hash, Card Number Hash, Pin Hash, Dollar Amount, Transfer Username Hash, New ATM Nonce, Last Bank Nonce, Random Padding to 992
-Bank Message = Command, Status, Last ATM Nonce, New Bank Nonce, Random Padding to 992
+ATM Message = Command, Username Hash, Card Number Hash, Pin Hash, Dollar Amount, Transfer Username Hash, New ATM Nonce, Last Bank Nonce, Random Padding to (1023 - 128 - 1)
+Bank Message = Command, Status, Last ATM Nonce, New Bank Nonce, Random Padding to (1023 - 128 - 1)
 
-Hashed Message = Message, 32 Character Message Hash
+Hashed Message = Message, 128 Character Message Hash
 Hashed Messgage Length = 1023 Characters
 
 Packet = E(Hashed Message)
@@ -46,15 +46,15 @@ User Account Data Structure
 	accountLoginTimeout
 
 ATM Messages
-	login, Username Hash, Card Number Hash, Pin Hash, 0, 0, New ATM Nonce, 0
-	balance, Username Hash, Card Number Hash, Pin Hash, 0, 0, New ATM Nonce, Last Bank Nonce
-	withdraw, Username Hash, Card Number Hash, Pin Hash, Amount to Withdraw, 0, New ATM Nonce, Last Bank Nonce
+	login, Username Hash, Card Number Hash, Pin Hash, NOT USED, NOT USED, New ATM Nonce, HANDSHAKE BANK NONCE
+	balance, Username Hash, Card Number Hash, Pin Hash, NOT USED, NOT USED, New ATM Nonce, Last Bank Nonce
+	withdraw, Username Hash, Card Number Hash, Pin Hash, Amount to Withdraw, NOT USED, New ATM Nonce, Last Bank Nonce
 	transfer, Username Hash, Card Number Hash, Pin Hash, Amount to Transfer, Transfer Username Hash, New ATM Nonce, Last Bank Nonce
-	logout, Username Hash, Card Number Hash, Pin Hash, 0, 0, New ATM Nonce, Last Bank Nonce
+	logout, Username Hash, Card Number Hash, Pin Hash, NOT USED, NOT USED, New ATM Nonce, Last Bank Nonce
 
 Bank Messages
 	login, If login successful, Last ATM Nonce, New Bank Nonce
 	balance, Dollar amount of balance, Last ATM Nonce, New Bank Nonce
 	withdraw, Dollar amount to withdraw, Last ATM Nonce, New Bank Nonce
 	transfer, If transfer successful, Last ATM Nonce, New Bank Nonce
-	logout, If logout successful, Last ATM Nonce, 0
+	logout, If logout successful, Last ATM Nonce, New Bank Nonce
