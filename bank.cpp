@@ -88,8 +88,9 @@ bool processWithdraw (std::vector<std::string> info)
 
 	std::vector<Account>::iterator it;
 	for (it = Database.begin(); it != Database.end(); it++) {
-		if (it->get_un() == info.at(1) && it->get_logged_in() && b <= it->get_balance()) {
+		if (it->get_un() == info.at(1) && it->get_logged_in() && b <= it->get_balance() && it->get_withdraw() + b <= 1000.00) {
 			it->reduce_balance(b);
+			it->increase_withdraw (b);
 			return true;
 		}
 	}
@@ -98,7 +99,6 @@ bool processWithdraw (std::vector<std::string> info)
 
 bool processTransfer (std::vector<std::string> info)
 {
-	//amount 4, rcpt 5
 	float b = (float)atof(info.at(4).c_str());
 	if (b > 1000.00) {
 		return false;
@@ -106,8 +106,9 @@ bool processTransfer (std::vector<std::string> info)
 
 	std::vector<Account>::iterator it;
 	for (it = Database.begin(); it != Database.end(); it++) {
-		if (it->get_un() == info.at(1) && it->get_logged_in() && b <= it->get_balance()) {
+		if (it->get_un() == info.at(1) && it->get_logged_in() && b <= it->get_balance() && it->get_transfer() + b <= 1000.00) {
 			it->reduce_balance(b);
+			it->increase_transfer (b);
 			std::vector<Account>::iterator foo;
 			for (foo = Database.begin(); foo != Database.end(); foo++) {
 				if (foo->get_un() == info.at(5)) {
@@ -115,6 +116,19 @@ bool processTransfer (std::vector<std::string> info)
 					return true;
 				}
 			}
+		}
+	}
+	return false;
+}
+
+bool logout (std::vector<std::string> info) 
+{
+	std::vector<Account>::iterator it;
+
+	for (it = Database.begin(); it != Database.end(); it++) {
+		if (it->get_un() == info.at(1) && it->get_logged_in()) {
+			it->set_logged_in_false();
+			return true;
 		}
 	}
 	return false;
@@ -276,7 +290,14 @@ void* client_thread(void* arg)
 				}  
 				else if(((std::string) "logout") == command) //if command is 'login'
 				{   
-					response = command + "," + "logout of " + bufArray[1];
+					bool flag = logout (bufArray);
+					if (flag) {
+						response = command + "," + "logout of " + bufArray[1];
+					}
+					else {
+						response = "error,ATM Command not valid,0,0";
+						response += "," + getRandom (1023 - 2 - response.length());
+					}
 				}
 
 				response += "," + bufArray[6] + "," + bankNonce;
