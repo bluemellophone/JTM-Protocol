@@ -213,12 +213,15 @@ void* client_thread(void* arg)
 	//input loop
 	int length;
 	char packet[1024];
+	char epacket[1408];
 	std::string bankNonce = "";
 	std::vector<std::string> bufArray;
 	std::string command;
 	std::string recievedHash;
 	std::string recievedHashedData;
 	std::string calculatedHash;
+	std::string encryptedPacket;
+	std::string decryptedPacket;
 	while(1)
 	{
 		bufArray.clear();
@@ -231,24 +234,32 @@ void* client_thread(void* arg)
 		{
 			break;
 		}	
-		if(length >= 1024)
+		if(length > 1408)
 		{
 			printf("[bank] packet too long\n");
 			break;
 		}
-		if(length != recv(csock, packet, length, 0))
+		if(length != recv(csock, epacket, length, 0))
 		{
 			printf("[bank] fail to read packet\n");
 			break;
 		}
-		else if(length == 1023)
+		else if(length == 1408)
 		{
-			//printf("[bank] Recieved ATM Packet (Length %d): %s\n", (int) ((std::string) packet).length(), packet);
+			// printf("[bank] Recieved ATM Encrypted Packet (Length %d): \n%s\n", (int) ((std::string) epacket).length(), epacket);
+
+			decryptedPacket = decryptAESPacket((std::string) epacket);
+			cout << "[bank] Recieved ATM Packet (Length " << decryptedPacket.length() << "): " << endl << decryptedPacket << endl << endl;
+
+			for(int i = 0; i < decryptedPacket.length(); i++)
+            {
+                packet[i] = decryptedPacket[i];
+            }
+
 			bufArray = split((std::string) packet, ',', bufArray);
 			command = bufArray[0];
 		}
 
-		//TODO: process packet data
 		packet[0] = '\0';
 
 		if(bufArray.size() == 10)
@@ -269,7 +280,7 @@ void* client_thread(void* arg)
 					if(((std::string) "login") == command) //if command is 'login'
 					{   
 						bool flag = login (bufArray);
-						if (flag) {
+						if (flag || true) { // temoprarily turn off account checking for testing purposes.
 							formBankPacket(packet, command, "login of " + bufArray[1], bufArray[6], bankNonce);
 						}
 						else {
@@ -327,13 +338,27 @@ void* client_thread(void* arg)
 			formBankPacket(packet, "error", "ATM Command not valid", bufArray[6], bankNonce);
 		}
 
+        epacket[0] = '\0';
+		cout << "[bank] Sending Bank Packet (Length " << strlen(packet) << "): " << endl << (std::string) packet << endl << endl;
+    
+        encryptedPacket = encryptAESPacket((std::string) packet);
+        //cout << "[bank] Sending Bank Encrypted Packet (Length " << encryptedPacket.length() << "): " << endl << encryptedPacket << endl << endl;
+
+        for(int i = 0; i < encryptedPacket.length(); i++)
+        {
+            epacket[i] = encryptedPacket[i];
+        }
+
+        length = encryptedPacket.length();
+
+		packet[0] = '\0';
 		//send the new packet back to the client
 		if(sizeof(int) != send(csock, &length, sizeof(int), 0))
 		{
 			printf("[bank] fail to send packet length\n");
 			break;
 		}
-		if(length != send(csock, (void*)packet, length, 0))
+		if(length != send(csock, (void*)epacket, length, 0))
 		{
 			printf("[bank] fail to send packet\n");
 			break;

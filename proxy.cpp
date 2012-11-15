@@ -92,13 +92,13 @@ void* client_thread(void* arg)
 	
 	//input loop
 	int length;
-	char packet[1024];
+	char packet[1408];
 	while(1)
 	{
 		//read the packet from the ATM
 		if(sizeof(int) != recv(csock, &length, sizeof(int), 0))
 			break;
-		if(length >= 1024)
+		if(length > 1408)
 		{
 			printf("packet too long\n");
 			break;
@@ -129,7 +129,7 @@ void* client_thread(void* arg)
 			printf("[proxy] fail to read packet length\n");
 			break;
 		}
-		if(length >= 1024)
+		if(length > 1408)
 		{
 			printf("packet too long\n");
 			break;

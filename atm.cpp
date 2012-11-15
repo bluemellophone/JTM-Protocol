@@ -55,6 +55,7 @@ void* formATMPacket(char packet[], std::string command, std::string username, st
     packet[0] = '\0';
     strcpy(packet,command.c_str());
     packet[command.length()] = delim;
+    int packetLength = 1023;
     
     int len = command.length() + 1;
     for(unsigned int i = 0; i < username.length(); ++i)
@@ -115,7 +116,7 @@ void* formATMPacket(char packet[], std::string command, std::string username, st
     len++;
     // Packet data has now been added. For the remaining amount of data, fill in random data.
     
-    std::string randomString = getRandom(1023 - 128 - 1 - len);
+    std::string randomString = getRandom(packetLength - 128 - 1 - len);
     for(unsigned int i = 0; i < randomString.length(); ++i)
     {
         packet[len + i] = randomString[i];
@@ -130,7 +131,7 @@ void* formATMPacket(char packet[], std::string command, std::string username, st
         packet[len + i] = hashString[i];
     }
 
-    packet[1023] = '\0';
+    packet[packetLength] = '\0';
 }
 
 
@@ -176,7 +177,10 @@ int main(int argc, char* argv[])
     std::string recievedHash;
     std::string recievedHashedData;
     std::string calculatedHash;
+    std::string encryptedPacket;
+    std::string decryptedPacket;
     char packet[1024];
+    char epacket[1408];
     char buf[80];
     int length;
     int sendPacket;
@@ -358,28 +362,32 @@ int main(int argc, char* argv[])
 
             if(sendPacket)
             {
-
-                //encryptAESPacket(packet);
+                // cout << "[atm] Sending ATM Packet (Length " << strlen(packet) << "): " << endl << (std::string) packet << endl << endl;
                 
+                encryptedPacket = encryptAESPacket((std::string) packet);
+                // cout << "[atm] Sending ATM Encrypted Packet (Length " << encryptedPacket.length() << "): " << endl << encryptedPacket << endl << endl;
 
+                for(int i = 0; i < encryptedPacket.length(); i++)
+                {
+                    epacket[i] = encryptedPacket[i];
+                }
 
-                //This block sends the message through the proxy to the bank. 
-                //There are two send messages - 1) packet length and 2) actual packet
-                length = strlen(packet);
-                
-                //cout << "[atm] Sending ATM Packet (Length: " << length << "): " << (std::string) packet << endl;
+                length = encryptedPacket.length();
                 
                 if(sizeof(int) != send(sock, &length, sizeof(int), 0))
                 {
                     printf("fail to send packet length\n");
                     break;
                 }
-                if(length != send(sock, (void*)packet, length, 0))
+                if(length != send(sock, (void*)epacket, length, 0))
                 {
                     printf("fail to send packet\n");
                     break;
                 }
                 
+                epacket[0] = '\0';
+                packet[0] = '\0';
+                 
                 //Implement timeout for bank response.
                 
                 if(sizeof(int) != recv(sock, &length, sizeof(int), 0))
@@ -387,19 +395,27 @@ int main(int argc, char* argv[])
                     printf("fail to read packet length\n");
                     break;
                 }
-                if(length >= 1024)
+                if(length > 1408)
                 {
                     printf("packet too long\n");
                     break;
                 }
-                if(length != recv(sock, packet, length, 0))
+                if(length != recv(sock, epacket, length, 0))
                 {
                     printf("fail to read packet\n");
                     break;
                 }
-                else if(length == 1023)
+                else if(length == 1408)
                 {
-                    //cout << "[atm] Recieved Bank Packet (Length: " << length << "):" << (std::string) packet << endl;
+                    //printf("[atm] Recieved Bank Encrypted Packet (Length %d): \n%s\n\n", (int) ((std::string) epacket).length(), epacket);
+
+                    decryptedPacket = decryptAESPacket((std::string) epacket);
+                    //cout << "[atm] Recieved Bank Packet (Length " << decryptedPacket.length() << "): " << endl << decryptedPacket << endl << endl;
+
+                    for(int i = 0; i < decryptedPacket.length(); i++)
+                    {
+                        packet[i] = decryptedPacket[i];
+                    }
                 
                     bufArray.clear();
                     bufArray = split((std::string) packet, ',', bufArray);

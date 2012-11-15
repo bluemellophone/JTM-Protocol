@@ -16,6 +16,7 @@
 #include <streambuf>
 #include <iterator>
 #include <termios.h>
+#include <algorithm>
 
 #include "cryptlib.h"
 #include "modes.h"
@@ -23,6 +24,7 @@
 #include "filters.h"
 #include "sha.h"
 #include "hex.h"
+#include "base64.h"
 
 using std::cout;
 using std::cin;
@@ -78,34 +80,15 @@ std::string getRandom(int length)
 	return retStr;
 }
 
-void* encryptAESPacket(char packet[])
+std::string encryptAESPacket(std::string plaintext)
 {
-    //
-    // Key and IV setup
-    //AES encryption uses a secret key of a variable length (128-bit, 196-bit or 256-   
-    //bit). This key is secretly exchanged between two parties before communication   
-    //begins. DEFAULT_KEYLENGTH= 16 bytes
     byte key[ CryptoPP::AES::DEFAULT_KEYLENGTH ], iv[ CryptoPP::AES::BLOCKSIZE ];
     memset( key, 0x00, CryptoPP::AES::DEFAULT_KEYLENGTH );
     memset( iv, 0x00, CryptoPP::AES::BLOCKSIZE );
 
-    //
-    // String and Sink setup
-    //
-    std::string plaintext = (std::string) packet;
     std::string ciphertext;
-    std::string decryptedtext;
-
-    //
-    // Dump Plain Text
-    //
-    cout << endl << "Plain Text (" << plaintext.size() << " bytes)" << endl;
-    cout << plaintext;
-    cout << endl << endl;
-
-    //
-    // Create Cipher Text
-    //
+    std::string decodedCiphertext;
+    
     CryptoPP::AES::Encryption aesEncryption(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
     CryptoPP::CBC_Mode_ExternalCipher::Encryption cbcEncryption( aesEncryption, iv );
 
@@ -113,15 +96,24 @@ void* encryptAESPacket(char packet[])
     stfEncryptor.Put( reinterpret_cast<const unsigned char*>( plaintext.c_str() ), plaintext.length() + 1 );
     stfEncryptor.MessageEnd();
 
-    //
-    // Dump Cipher Text
-    //
-    cout << "Cipher Text (" << ciphertext.size() << " bytes)" << endl;
-    cout << ciphertext << endl << endl;
+    CryptoPP::StringSource foo(ciphertext, true, new CryptoPP::Base64Encoder (new CryptoPP::StringSink(decodedCiphertext)));
+    //decodedCiphertext.erase (std::remove(decodedCiphertext.begin(), decodedCiphertext.end(), '\n'), decodedCiphertext.end());
 
-    //
-    // Decrypt
-    //
+    return decodedCiphertext;
+    
+}
+
+std::string decryptAESPacket(std::string encodedCiphertext)
+{
+    byte key[ CryptoPP::AES::DEFAULT_KEYLENGTH ], iv[ CryptoPP::AES::BLOCKSIZE ];
+    memset( key, 0x00, CryptoPP::AES::DEFAULT_KEYLENGTH );
+    memset( iv, 0x00, CryptoPP::AES::BLOCKSIZE );
+    
+    std::string ciphertext;
+    std::string decryptedtext;
+
+    CryptoPP::StringSource foo(encodedCiphertext, true, new CryptoPP::Base64Decoder (new CryptoPP::StringSink(ciphertext)));
+   
     CryptoPP::AES::Decryption aesDecryption(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
     CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption( aesDecryption, iv );
 
@@ -129,12 +121,5 @@ void* encryptAESPacket(char packet[])
     stfDecryptor.Put( reinterpret_cast<const unsigned char*>( ciphertext.c_str() ), ciphertext.size() );
     stfDecryptor.MessageEnd();
 
-    //
-    // Dump Decrypted Text
-    //
-    cout << "Decrypted Text: " << endl;
-    cout << decryptedtext;
-    cout << endl << endl;
-
-    return 0;
+    return decryptedtext;
 }
