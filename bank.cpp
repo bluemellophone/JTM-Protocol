@@ -214,6 +214,8 @@ void* client_thread(void* arg)
 	int length;
 	char packet[1024];
 	char epacket[1408];
+    std::string sessionAESKey = "12345678901234567890123456789012";
+    std::string sessionAESBlock = "1234567890123456";
 	std::string bankNonce = "";
 	std::vector<std::string> bufArray;
 	std::string command;
@@ -248,7 +250,7 @@ void* client_thread(void* arg)
 		{
 			// printf("[bank] Recieved ATM Encrypted Packet (Length %d): \n%s\n", (int) ((std::string) epacket).length(), epacket);
 
-			decryptedPacket = decryptAESPacket((std::string) epacket);
+			decryptedPacket = decryptAESPacket((std::string) epacket, sessionAESKey, sessionAESBlock);
 			cout << "[bank] Recieved ATM Packet (Length " << decryptedPacket.length() << "): " << endl << decryptedPacket << endl << endl;
 
 			for(int i = 0; i < decryptedPacket.length(); i++)
@@ -339,9 +341,9 @@ void* client_thread(void* arg)
 		}
 
         epacket[0] = '\0';
-		cout << "[bank] Sending Bank Packet (Length " << strlen(packet) << "): " << endl << (std::string) packet << endl << endl;
+		//cout << "[bank] Sending Bank Packet (Length " << strlen(packet) << "): " << endl << (std::string) packet << endl << endl;
     
-        encryptedPacket = encryptAESPacket((std::string) packet);
+        encryptedPacket = encryptAESPacket((std::string) packet, sessionAESKey, sessionAESBlock);
         //cout << "[bank] Sending Bank Encrypted Packet (Length " << encryptedPacket.length() << "): " << endl << encryptedPacket << endl << endl;
 
         for(int i = 0; i < encryptedPacket.length(); i++)

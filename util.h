@@ -17,6 +17,7 @@
 #include <iterator>
 #include <termios.h>
 #include <algorithm>
+#include <bitset>
 
 #include "cryptlib.h"
 #include "modes.h"
@@ -80,11 +81,21 @@ std::string getRandom(int length)
 	return retStr;
 }
 
-std::string encryptAESPacket(std::string plaintext)
+std::string encryptAESPacket(std::string plaintext, std::string AESKey, std::string AESBlock)
 {
-    byte key[ CryptoPP::AES::DEFAULT_KEYLENGTH ], iv[ CryptoPP::AES::BLOCKSIZE ];
-    memset( key, 0x00, CryptoPP::AES::DEFAULT_KEYLENGTH );
-    memset( iv, 0x00, CryptoPP::AES::BLOCKSIZE );
+    byte key[ CryptoPP::AES::MAX_KEYLENGTH], iv[ CryptoPP::AES::BLOCKSIZE ];
+    
+    std::vector<char> bytes1(AESKey.begin(), AESKey.end());
+    for(int i = 0; i < bytes1.size(); i++)
+    {
+        key[i] = bytes1[i];
+    }
+    
+    std::vector<char> bytes2(AESBlock.begin(), AESBlock.end());
+    for(int i = 0; i < bytes2.size(); i++)
+    {
+        iv[i] = bytes2[i];
+    }
 
     std::string ciphertext;
     std::string decodedCiphertext;
@@ -97,17 +108,25 @@ std::string encryptAESPacket(std::string plaintext)
     stfEncryptor.MessageEnd();
 
     CryptoPP::StringSource foo(ciphertext, true, new CryptoPP::Base64Encoder (new CryptoPP::StringSink(decodedCiphertext)));
-    //decodedCiphertext.erase (std::remove(decodedCiphertext.begin(), decodedCiphertext.end(), '\n'), decodedCiphertext.end());
-
-    return decodedCiphertext;
     
+    return decodedCiphertext;
 }
 
-std::string decryptAESPacket(std::string encodedCiphertext)
+std::string decryptAESPacket(std::string encodedCiphertext, std::string AESKey, std::string AESBlock)
 {
-    byte key[ CryptoPP::AES::DEFAULT_KEYLENGTH ], iv[ CryptoPP::AES::BLOCKSIZE ];
-    memset( key, 0x00, CryptoPP::AES::DEFAULT_KEYLENGTH );
-    memset( iv, 0x00, CryptoPP::AES::BLOCKSIZE );
+    byte key[ CryptoPP::AES::MAX_KEYLENGTH], iv[ CryptoPP::AES::BLOCKSIZE ];
+    
+    std::vector<char> bytes1(AESKey.begin(), AESKey.end());
+    for(int i = 0; i < bytes1.size(); i++)
+    {
+        key[i] = bytes1[i];
+    }
+    
+    std::vector<char> bytes2(AESBlock.begin(), AESBlock.end());
+    for(int i = 0; i < bytes2.size(); i++)
+    {
+        iv[i] = bytes2[i];
+    }
     
     std::string ciphertext;
     std::string decryptedtext;

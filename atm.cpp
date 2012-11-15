@@ -168,6 +168,8 @@ int main(int argc, char* argv[])
     }
     
     bool userLoggedIn = false;
+    std::string sessionAESKey = "12345678901234567890123456789012";
+    std::string sessionAESBlock = "1234567890123456";
     std::string command = "";
     std::string username = "";
     std::string cardHash = "";
@@ -364,7 +366,7 @@ int main(int argc, char* argv[])
             {
                 // cout << "[atm] Sending ATM Packet (Length " << strlen(packet) << "): " << endl << (std::string) packet << endl << endl;
                 
-                encryptedPacket = encryptAESPacket((std::string) packet);
+                encryptedPacket = encryptAESPacket((std::string) packet, sessionAESKey, sessionAESBlock);
                 // cout << "[atm] Sending ATM Encrypted Packet (Length " << encryptedPacket.length() << "): " << endl << encryptedPacket << endl << endl;
 
                 for(int i = 0; i < encryptedPacket.length(); i++)
@@ -409,7 +411,7 @@ int main(int argc, char* argv[])
                 {
                     //printf("[atm] Recieved Bank Encrypted Packet (Length %d): \n%s\n\n", (int) ((std::string) epacket).length(), epacket);
 
-                    decryptedPacket = decryptAESPacket((std::string) epacket);
+                    decryptedPacket = decryptAESPacket((std::string) epacket, sessionAESKey, sessionAESBlock);
                     //cout << "[atm] Recieved Bank Packet (Length " << decryptedPacket.length() << "): " << endl << decryptedPacket << endl << endl;
 
                     for(int i = 0; i < decryptedPacket.length(); i++)

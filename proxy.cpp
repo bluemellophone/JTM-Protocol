@@ -108,7 +108,9 @@ void* client_thread(void* arg)
 			printf("[proxy] fail to read packet\n");
 			break;
 		}
-		
+
+		//cout << "[bank] ATM Packet (Length " << strlen(packet) << "): " << endl << ((std::string) packet) << endl << endl;
+
 		//TODO: tamper with packet going from ATM to bank
 		
 		//forward packet to bank
@@ -139,6 +141,8 @@ void* client_thread(void* arg)
 			printf("[proxy] fail to read packet\n");
 			break;
 		}
+
+		//cout << "[bank] Bank Packet (Length " << strlen(packet) << "): " << endl << ((std::string) packet) << endl << endl;
 		
 		//TODO: tamper with packet going from bank to ATM
 

@@ -4,8 +4,8 @@ Notes for Wednesday, November 7th, 2012
 --------------------- Project Elements ---------------------
 Crypto Libraries: Crypto++ [http://www.cryptopp.com/]
 
-Symmetric Encryption: AES-128
-	128-bit Session Key, discarded after every logout
+Symmetric Encryption: AES-256
+	256-bit Session Key, discarded after every logout
 
 Asymmetric Encryption: RSA
 	Public and Private keys for ATM
@@ -25,14 +25,14 @@ Transfer Limit = $1000 per day
 
 --------------------- Project Data Structures ---------------------
 
-ATM Message = Command, Username Hash, Card Number Hash, Pin Hash, Dollar Amount, Transfer Username Hash, New ATM Nonce, Last Bank Nonce, Random Padding to (1023 - 128 - 1)
+ATM Message = Command, Username, Card Number Hash, Pin, Dollar Amount, Transfer Username, New ATM Nonce, Last Bank Nonce, Random Padding to (1023 - 128 - 1)
 Bank Message = Command, Status, Last ATM Nonce, New Bank Nonce, Random Padding to (1023 - 128 - 1)
 
-Hashed Message = Message, 128 Character Message Hash
+Hashed Message = Message, 128 Character SHA-512 Message Hash
 Hashed Messgage Length = 1023 Characters
 
-Packet = Base64Encoding[E(Hashed Message)]
-Packet Length = 1023 Characters
+Encrypted, Encoded Packet = Base64Encoding[E^AES-256(Hashed Message)]
+Encrypted, Encoded Packet Length = 1408 Characters
 
 XXX.card (card file for user XXX)
 	Hash of user's account number
