@@ -31,7 +31,7 @@ Bank Message = Command, Status, Last ATM Nonce, New Bank Nonce, Random Padding t
 Hashed Message = Message, 128 Character Message Hash
 Hashed Messgage Length = 1023 Characters
 
-Packet = E(Hashed Message)
+Packet = Base64Encoding[E(Hashed Message)]
 Packet Length = 1023 Characters
 
 XXX.card (card file for user XXX)
