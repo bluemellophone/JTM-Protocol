@@ -65,20 +65,75 @@ std::string getRandom(int length)
 {   
 	std::string retStr = "";
 	int num = 0;
+    bool hex = true;
 	for(unsigned int i = 0; i < length; ++i)
 	{
-		num = (int) (rand() % 16);
-		if(num < 10)
-		{
-			retStr += (num + '0');
-		}
-		else
-		{
-			retStr += ((num - 10) + 'A');
-		}
+        if(hex)
+        {
+            // Generate Random Hex String
+    		num = (int) (rand() % 16);
+    		if(num < 10)
+    		{
+    			retStr += (num + '0');
+    		}
+    		else
+    		{
+    			retStr += ((num - 10) + 'A');
+    		}
+        }
+        else
+        {
+            // Generate Random String With ASCII Range (33, 126)
+            num = (int) (rand() % (126 - 48));
+            retStr += (num + '0');
+        }
+
 	}
 
 	return retStr;
+}
+
+void* formPacket(char packet[], int packetLength , std::vector<std::string> &items)
+{
+    char delim = ',';
+    packet[0] = '\0';
+    int len = 0;
+    std::string item = "";
+    std::string packetData = "";
+    
+    for(int i = 0; i < items.size(); i++)
+    {
+        item = items[i];
+        packetData += item;
+        packetData += ","; 
+        for(unsigned int j = 0; j < item.length(); ++j)
+        {
+            packet[len + j] = item[j];  //add username to packet
+        }
+        
+        len += item.length();
+        packet[len] = delim;
+        len++;
+    }
+
+    // Adding Random Padding
+    std::string randomString = getRandom(packetLength - 128 - 1 - len);
+    for(unsigned int i = 0; i < randomString.length(); ++i)
+    {
+        packet[len + i] = randomString[i];
+    }
+    len += randomString.length();
+    packet[len] = delim;
+    len++;
+
+    // Adding SHA-512 Hash
+    std::string hashString = SHA512HashString((std::string) packetData + randomString);    
+    for(unsigned int i = 0; i < hashString.length(); ++i)
+    {
+        packet[len + i] = hashString[i];
+    }
+
+    packet[packetLength] = '\0';
 }
 
 std::string encryptAESPacket(std::string plaintext, std::string AESKey, std::string AESBlock)

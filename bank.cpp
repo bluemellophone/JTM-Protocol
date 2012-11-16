@@ -9,57 +9,25 @@
 void* client_thread(void* arg);
 void* console_thread(void* arg);
 
+void* formBankHandshake(char packet[], std::string command, std::string atmNonce, std::string bankNonce, std::string AESKey, std::string AESSession)
+{
+    std::vector<std::string> tempVector;
+    tempVector.push_back(command);
+    tempVector.push_back(atmNonce);
+    tempVector.push_back(bankNonce);
+    tempVector.push_back(AESKey);
+    tempVector.push_back(AESSession);
+    formPacket(packet, 512, tempVector);
+}
 
 void* formBankPacket(char packet[], std::string command, std::string status, std::string atmNonce, std::string bankNonce)
 {
-    char delim = ',';
-    packet[0] = '\0';
-    strcpy(packet,command.c_str());
-    packet[command.length()] = delim;
-    
-    int len = command.length() + 1;
-    for(unsigned int i = 0; i < status.length(); ++i)
-    {
-        packet[len + i] = status[i];  //add username to packet
-    }
-
-    len += status.length();
-    packet[len] = delim;
-    len++;
-    for(unsigned int i = 0; i < atmNonce.length(); ++i)
-    {
-        packet[len + i] = atmNonce[i];   //add atm nonce to packet
-    }
-    
-    len += atmNonce.length();
-    packet[len] = delim;
-    len++;
-    for(unsigned int i = 0; i < bankNonce.length(); ++i)
-    {
-        packet[len + i] = bankNonce[i];   //add bank nonce to packet
-    }
-    
-    len += bankNonce.length();
-    packet[len] = delim;
-    len++;
-    // Packet data has now been added. For the remaining amount of data, fill in random data.
-    
-    std::string randomString = getRandom(1023 - 128 - 1 - len);
-    for(unsigned int i = 0; i < randomString.length(); ++i)
-    {
-        packet[len + i] = randomString[i];
-    }
-    len += randomString.length();
-    packet[len] = delim;
-    len++;
-
-    std::string hashString = SHA512HashString((std::string) command + "," + status + "," + atmNonce + "," + bankNonce + "," + randomString);    
-    for(unsigned int i = 0; i < hashString.length(); ++i)
-    {
-        packet[len + i] = hashString[i];
-    }
-
-    packet[1023] = '\0';
+    std::vector<std::string> tempVector;
+    tempVector.push_back(command);
+    tempVector.push_back(status);
+    tempVector.push_back(atmNonce);
+    tempVector.push_back(bankNonce);
+    formPacket(packet, 1023, tempVector);
 }
 
 /* Begin definition of account functions */
@@ -208,24 +176,30 @@ void* client_thread(void* arg)
 	long unsigned int csock = (long unsigned int)arg;
 
 	//printf("[bank] client ID #%d connected\n", csock);
-	printf("[bank] client ID #%ld connected\n", csock);
+	printf("[bank] client ID #%ld connected\n\n", csock);
 
 	//input loop
 	int length;
 	char packet[1024];
 	char epacket[1408];
-    std::string sessionAESKey = "12345678901234567890123456789012";
-    std::string sessionAESBlock = "1234567890123456";
-	std::string bankNonce = "";
 	std::vector<std::string> bufArray;
+
+    std::string sessionAESKey;
+    std::string sessionAESBlock;
+	
+	std::string bankNonce;
 	std::string command;
+
 	std::string recievedHash;
 	std::string recievedHashedData;
 	std::string calculatedHash;
 	std::string encryptedPacket;
 	std::string decryptedPacket;
+
+
 	while(1)
 	{
+        epacket[0] = '\0';
 		bufArray.clear();
 		recievedHash = "";
 		recievedHashedData = "";
@@ -246,10 +220,69 @@ void* client_thread(void* arg)
 			printf("[bank] fail to read packet\n");
 			break;
 		}
+		else if(length < 1408)
+		{	
+        	epacket[512] = '\0';
+			printf("[bank] Recieved ATM Handshake (Length %d): \n%s\n\n", (int) ((std::string) epacket).length(), epacket);
+			
+			bufArray = split((std::string) epacket, ',', bufArray);
+			
+			if(bufArray.size() == 4)
+			{
+				recievedHash = bufArray[3];
+				recievedHash = recievedHash.substr(0, recievedHash.length() - 1);
+				recievedHashedData = bufArray[0] + "," + bufArray[1] + "," + bufArray[2];
+				calculatedHash = SHA512HashString(recievedHashedData);
+
+				//cout << recievedHash << " (Length " << recievedHash.length() << ")" << endl;
+				//cout << calculatedHash << " (Length " << calculatedHash.length() << ")" << endl;
+				if(recievedHash == calculatedHash)
+				{
+					command = bufArray[0];
+						
+					if(((std::string) "handshake") == command) //if command is 'login'
+					{   
+						bankNonce = getRandom(32);
+						sessionAESKey = getRandom(32);
+						sessionAESBlock = getRandom(16);
+
+						formBankHandshake(epacket, "handshake", bufArray[1], bankNonce, sessionAESKey, sessionAESBlock);
+					} 
+					else
+					{
+						formBankHandshake(epacket, "error", bufArray[1], bankNonce, "00000000000000000000000000000000", "0000000000000000");
+					}
+				}
+				else
+				{
+					formBankHandshake(epacket, "error", bufArray[1], bankNonce, "00000000000000000000000000000000", "0000000000000000");
+				}
+			} 
+			else
+			{
+				// Error: Command sent from ATM not recognized.
+				formBankHandshake(epacket, "error", bufArray[1], bankNonce, "00000000000000000000000000000000", "0000000000000000");
+			}
+
+			//cout << "[bank] Sending Bank Handshake (Length " << strlen(epacket) << "): " << endl << (std::string) epacket << endl << endl;
+		    
+			//send the new packet back to the client
+			if(sizeof(int) != send(csock, &length, sizeof(int), 0))
+			{
+				printf("[bank] fail to send packet length\n");
+				break;
+			}
+			if(length != send(csock, (void*)epacket, length, 0))
+			{
+				printf("[bank] fail to send packet\n");
+				break;
+			}
+		}	
 		else if(length == 1408)
 		{
-			// printf("[bank] Recieved ATM Encrypted Packet (Length %d): \n%s\n", (int) ((std::string) epacket).length(), epacket);
+			// RECIEVED AES PACKET
 
+			//printf("[bank] Recieved ATM Encrypted Packet (Length %d): \n%s\n", (int) ((std::string) epacket).length(), epacket);
 			decryptedPacket = decryptAESPacket((std::string) epacket, sessionAESKey, sessionAESBlock);
 			cout << "[bank] Recieved ATM Packet (Length " << decryptedPacket.length() << "): " << endl << decryptedPacket << endl << endl;
 
@@ -259,111 +292,115 @@ void* client_thread(void* arg)
             }
 
 			bufArray = split((std::string) packet, ',', bufArray);
-			command = bufArray[0];
-		}
+			packet[0] = '\0';
 
-		packet[0] = '\0';
-
-		if(bufArray.size() == 10)
-		{
-			recievedHash = bufArray[9];
-			recievedHash = recievedHash.substr(0, recievedHash.length() - 1);
-			recievedHashedData = bufArray[0] + "," + bufArray[1] + "," + bufArray[2] + "," + bufArray[3] + "," + bufArray[4] + "," + bufArray[5] + "," + bufArray[6] + "," + bufArray[7] + "," + bufArray[8];
-			calculatedHash = SHA512HashString(recievedHashedData);
-
-			//cout << recievedHash << " (Length " << recievedHash.length() << ")" << endl;
-			//cout << calculatedHash << " (Length " << calculatedHash.length() << ")" << endl;
-			if(recievedHash == calculatedHash)
+			if(bufArray.size() == 10)
 			{
-				if((bankNonce == "" && bufArray[7] == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") || bankNonce == bufArray[7])
-				{
-					bankNonce = getRandom(32);
+				recievedHash = bufArray[9];
+				recievedHash = recievedHash.substr(0, recievedHash.length() - 1);
+				recievedHashedData = bufArray[0] + "," + bufArray[1] + "," + bufArray[2] + "," + bufArray[3] + "," + bufArray[4] + "," + bufArray[5] + "," + bufArray[6] + "," + bufArray[7] + "," + bufArray[8];
+				calculatedHash = SHA512HashString(recievedHashedData);
 
-					if(((std::string) "login") == command) //if command is 'login'
-					{   
-						bool flag = login (bufArray);
-						if (flag || true) { // temoprarily turn off account checking for testing purposes.
-							formBankPacket(packet, command, "login of " + bufArray[1], bufArray[6], bankNonce);
+				//cout << recievedHash << " (Length " << recievedHash.length() << ")" << endl;
+				//cout << calculatedHash << " (Length " << calculatedHash.length() << ")" << endl;
+				if(recievedHash == calculatedHash)
+				{
+					if(bankNonce == bufArray[7])
+					{
+						command = bufArray[0];
+						bankNonce = getRandom(32);
+
+						if(((std::string) "login") == command) //if command is 'login'
+						{   
+							bool flag = login (bufArray);
+							if (flag || true) { // temoprarily turn off account checking for testing purposes.
+								formBankPacket(packet, command, "login of " + bufArray[1], bufArray[6], bankNonce);
+							}
+							else {
+								formBankPacket(packet, "error", "ATM Login not valid", bufArray[6], bankNonce);
+							}
+						} 
+						else if(((std::string) "balance") == command) //if command is 'login'
+						{   
+							float flag = checkBalance (bufArray);
+							if (flag >= 0 || true) { // temoprarily turn off account checking for testing purposes.
+								formBankPacket(packet, command, "balance of " + bufArray[1], bufArray[6], bankNonce);
+							}
+							else {
+								formBankPacket(packet, "error", "ATM Balance not valid", bufArray[6], bankNonce);
+							}
+						} 
+						else if(((std::string) "withdraw") == command) //if command is 'login'
+						{   
+							bool flag = processWithdraw (bufArray);
+							if (flag) {
+								formBankPacket(packet, command, "withdraw of " + bufArray[1] + "  amount: " + bufArray[4], bufArray[6], bankNonce);
+							}
+							else {
+								formBankPacket(packet, "error", "ATM Withdraw not valid", bufArray[6], bankNonce);			
+							}
 						}
-						else {
-							formBankPacket(packet, "error", "ATM Login not valid", bufArray[6], bankNonce);
+						else if(((std::string) "transfer") == command) //if command is 'login'
+						{   
+							bool flag = processTransfer (bufArray);
+							if (flag) {
+								formBankPacket(packet, command, "transfer of " + bufArray[1] + "  amount: " + bufArray[4] + "  recipient: " + bufArray[5], bufArray[6], bankNonce);
+							}
+							else {
+								formBankPacket(packet, "error", "ATM Transfer not valid", bufArray[6], bankNonce);
+							}
+						}  
+						else if(((std::string) "logout") == command) //if command is 'login'
+						{   
+							formBankPacket(packet, command, "logout of " + bufArray[1], bufArray[6], bankNonce);
 						}
-					} 
-					else if(((std::string) "balance") == command) //if command is 'login'
-					{   
-						float flag = checkBalance (bufArray);
-						if (flag >= 0) {
-							formBankPacket(packet, command, "balance of " + bufArray[1], bufArray[6], bankNonce);
-						}
-						else {
-							formBankPacket(packet, "error", "ATM Balance not valid", bufArray[6], bankNonce);
-						}
-					} 
-					else if(((std::string) "withdraw") == command) //if command is 'login'
-					{   
-						bool flag = processWithdraw (bufArray);
-						if (flag) {
-							formBankPacket(packet, command, "withdraw of " + bufArray[1] + "  amount: " + bufArray[4], bufArray[6], bankNonce);
-						}
-						else {
-							formBankPacket(packet, "error", "ATM Withdraw not valid", bufArray[6], bankNonce);			
+						else
+						{
+							// Error: Command sent from ATM not recognized.
+							formBankPacket(packet, "error", "ATM Command not valid", bufArray[6], bankNonce);
 						}
 					}
-					else if(((std::string) "transfer") == command) //if command is 'login'
-					{   
-						bool flag = processTransfer (bufArray);
-						if (flag) {
-							formBankPacket(packet, command, "transfer of " + bufArray[1] + "  amount: " + bufArray[4] + "  recipient: " + bufArray[5], bufArray[6], bankNonce);
-						}
-						else {
-							formBankPacket(packet, "error", "ATM Transfer not valid", bufArray[6], bankNonce);
-						}
-					}  
-					else if(((std::string) "logout") == command) //if command is 'login'
-					{   
-						formBankPacket(packet, command, "logout of " + bufArray[1], bufArray[6], bankNonce);
+					else
+					{
+						formBankPacket(packet, "error", "ATM Nonce not valid", bufArray[6], bankNonce);
 					}
 				}
 				else
 				{
-					formBankPacket(packet, "error", "ATM Nonce not valid", bufArray[6], bankNonce);
+					formBankPacket(packet, "error", "ATM Hash not valid", bufArray[6], bankNonce);
 				}
-			}
+			} 
 			else
 			{
-				formBankPacket(packet, "error", "ATM Hash not valid", bufArray[6], bankNonce);
+				// Error: Command sent from ATM not recognized.
+				formBankPacket(packet, "error", "ATM Command not valid", bufArray[6], bankNonce);
 			}
-		} 
-		else
-		{
-			// Error: Command sent from ATM not recognized.
-			formBankPacket(packet, "error", "ATM Command not valid", bufArray[6], bankNonce);
-		}
 
-        epacket[0] = '\0';
-		//cout << "[bank] Sending Bank Packet (Length " << strlen(packet) << "): " << endl << (std::string) packet << endl << endl;
-    
-        encryptedPacket = encryptAESPacket((std::string) packet, sessionAESKey, sessionAESBlock);
-        //cout << "[bank] Sending Bank Encrypted Packet (Length " << encryptedPacket.length() << "): " << endl << encryptedPacket << endl << endl;
+	        epacket[0] = '\0';
+			
+			//cout << "[bank] Sending Bank Packet (Length " << strlen(packet) << "): " << endl << (std::string) packet << endl << endl;
+		    encryptedPacket = encryptAESPacket((std::string) packet, sessionAESKey, sessionAESBlock);
+	        //cout << "[bank] Sending Bank Encrypted Packet (Length " << encryptedPacket.length() << "): " << endl << encryptedPacket << endl << endl;
 
-        for(int i = 0; i < encryptedPacket.length(); i++)
-        {
-            epacket[i] = encryptedPacket[i];
-        }
+	        for(int i = 0; i < encryptedPacket.length(); i++)
+	        {
+	            epacket[i] = encryptedPacket[i];
+	        }
 
-        length = encryptedPacket.length();
+	        length = encryptedPacket.length();
 
-		packet[0] = '\0';
-		//send the new packet back to the client
-		if(sizeof(int) != send(csock, &length, sizeof(int), 0))
-		{
-			printf("[bank] fail to send packet length\n");
-			break;
-		}
-		if(length != send(csock, (void*)epacket, length, 0))
-		{
-			printf("[bank] fail to send packet\n");
-			break;
+			packet[0] = '\0';
+			//send the new packet back to the client
+			if(sizeof(int) != send(csock, &length, sizeof(int), 0))
+			{
+				printf("[bank] fail to send packet length\n");
+				break;
+			}
+			if(length != send(csock, (void*)epacket, length, 0))
+			{
+				printf("[bank] fail to send packet\n");
+				break;
+			}
 		}
 	}
 
