@@ -27,11 +27,11 @@ Transfer Limit = $1000 per day
 Handshakes
 	ATM Handshake = "handshake", New / First ATM Nonce, Random Padding to (1023 - 128 - 1)
 	Hashed ATM Handshake = ATM Handshake, 128 Character SHA-512 ATM Handshake Hash 
-	RSA Encrypted, Encoded ATM Handshake = Base64Encoding[ E^RSA-BANK PUBLIC KEY( E^RSA-ATM PRIVATE KEY(Hashed Message ) ) ]
+	RSA Encrypted, Encoded ATM Handshake = Base64Encoding[ Encrypt^RSA-BANK PUBLIC KEY( Sign^RSA-ATM PRIVATE KEY( Hashed ATM Handshake ) ) ]
 
 	Bank Handshake = "handshake", Last ATM Nonce, New / First Bank Nonce, AES Session Key, AES Session Block, Random Padding to (1023 - 128 - 1)
 	Hashed Bank Handshake = Bank Handshake, 128 Character SHA-512 Bank Handshake Hash 
-	RSA Encrypted, Encoded Bank Handshake = Base64Encoding[ E^RSA-ATM PUBLIC KEY( E^RSA-BANK PRIVATE KEY-(Hashed Message ) ) ]
+	RSA Encrypted, Encoded Bank Handshake = Base64Encoding[ Encrypt^RSA-ATM PUBLIC KEY( Sign^RSA-BANK PRIVATE KEY( Hashed Bank Handshake ) ) ]
 
 Messages
 	ATM Message = Command, Username, Card Number Hash, Pin, Dollar Amount, Transfer Username, New ATM Nonce, Last Bank Nonce, Random Padding to (1023 - 128 - 1)
@@ -42,7 +42,7 @@ Messages
 	Hashed Message = Message, 128 Character SHA-512 Message Hash
 	Hashed Messgage Length = 1023 Characters
 
-	AES Encrypted, Encoded Packet = Base64Encoding[ E^AES-256( Hashed Message ) ]
+	AES Encrypted, Encoded Packet = Base64Encoding[ Encrypt^AES-SESSION KEY( Hashed Message ) ]
 	AES Encrypted, Encoded Packet Length = 1408 Characters
 
 	ATM Messages

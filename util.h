@@ -87,7 +87,6 @@ std::string getRandom(int length)
             num = (int) (rand() % (126 - 48));
             retStr += (num + '0');
         }
-
 	}
 
 	return retStr;
