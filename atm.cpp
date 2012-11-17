@@ -89,6 +89,7 @@ int main(int argc, char* argv[])
     std::string item2;
     std::string atmNonce;
     std::string bankNonce;
+    std::string temp; 
 
     std::string sessionAESKey;
     std::string sessionAESBlock;
@@ -182,21 +183,36 @@ int main(int argc, char* argv[])
                 {
                     if(bufArray.size() == 2)
                     {   
-                        std::ifstream cardFile(("cards/" + bufArray[1] + ".card").c_str());
+                        temp = bufArray[1];
+                        temp = temp.substr(0,32);
+                        std::transform(temp.begin(), temp.end(), temp.begin(), ::tolower);
+                        temp = toAlpha(temp);
+                        std::ifstream cardFile(("cards/" + temp + ".card").c_str());
 
                         if(cardFile)
                         {
                             sendPacket = 1; // Send packet because valid command
+
                             username = bufArray[1];
+                            username = username.substr(0,32);
+                            std::transform(username.begin(), username.end(), username.begin(), ::tolower);
+                            username = toAlpha(username);
 
                             // obtain card hash
                             std::string temp((std::istreambuf_iterator<char>(cardFile)),std::istreambuf_iterator<char>());
                             cardHash = temp;
-                            cardHash = cardHash.substr(0,32);
-                            
+                            cardHash = cardHash.substr(0,128);
+                            std::transform(cardHash.begin(), cardHash.end(), cardHash.begin(), ::toupper);
+                            cardHash = toHex(cardHash);
+
                             // obtain pin form user
                             pin = getPin("PIN: ");
                             pin = pin.substr(0,6);
+                            while(pin.length() < 6)
+                            {
+                                pin = "0" + pin;
+                            }
+                            pin = toNumbers(pin);
                         }
                         else
                         {

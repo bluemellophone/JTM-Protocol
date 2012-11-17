@@ -47,6 +47,56 @@ std::string SHA512HashString(const std::string& input)
     return output;
 }
 
+std::string toHex(std::string inputStr)
+{
+    std::string retStr = "";
+    for(int i = 0; i < inputStr.length(); i++)
+    {
+        if(('0' <= inputStr[i] && inputStr[i] <= '9') || ('A' <= inputStr[i] && inputStr[i] <= 'F'))
+        {
+            retStr += inputStr[i];
+        }
+        else
+        {
+            retStr += "0";
+        }
+    }
+
+    return retStr;
+}
+
+std::string toNumbers(std::string inputStr)
+{
+    std::string retStr = "";
+    for(int i = 0; i < inputStr.length(); i++)
+    {
+        if('0' <= inputStr[i] && inputStr[i] <= '9')
+        {
+            retStr += inputStr[i];
+        }
+        else
+        {
+            retStr += "0";
+        }
+    }
+
+    return retStr;
+}
+
+std::string toAlpha(std::string inputStr)
+{
+    std::string retStr = "";
+    for(int i = 0; i < inputStr.length(); i++)
+    {
+        if('a' <= inputStr[i] && inputStr[i] <= 'z')
+        {
+            retStr += inputStr[i];
+        }
+    }
+
+    return retStr;
+}
+
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) 
 {
 	std::stringstream ss(s+' ');

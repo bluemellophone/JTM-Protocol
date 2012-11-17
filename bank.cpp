@@ -320,7 +320,7 @@ void* client_thread(void* arg)
 								formBankPacket(packet, "error", "ATM Login not valid", bufArray[6], bankNonce);
 							}
 						} 
-						else if(((std::string) "balance") == command) //if command is 'login'
+						else if(((std::string) "balance") == command) //if command is 'balance'
 						{   
 							float flag = checkBalance (bufArray);
 							if (flag >= 0 || true) { // temoprarily turn off account checking for testing purposes.
@@ -330,7 +330,7 @@ void* client_thread(void* arg)
 								formBankPacket(packet, "error", "ATM Balance not valid", bufArray[6], bankNonce);
 							}
 						} 
-						else if(((std::string) "withdraw") == command) //if command is 'login'
+						else if(((std::string) "withdraw") == command) //if command is 'withdraw'
 						{   
 							bool flag = processWithdraw (bufArray);
 							if (flag) {
@@ -340,7 +340,7 @@ void* client_thread(void* arg)
 								formBankPacket(packet, "error", "ATM Withdraw not valid", bufArray[6], bankNonce);			
 							}
 						}
-						else if(((std::string) "transfer") == command) //if command is 'login'
+						else if(((std::string) "transfer") == command) //if command is 'transfer'
 						{   
 							bool flag = processTransfer (bufArray);
 							if (flag) {
@@ -350,7 +350,7 @@ void* client_thread(void* arg)
 								formBankPacket(packet, "error", "ATM Transfer not valid", bufArray[6], bankNonce);
 							}
 						}  
-						else if(((std::string) "logout") == command) //if command is 'login'
+						else if(((std::string) "logout") == command) //if command is 'logout'
 						{   
 							formBankPacket(packet, command, "logout of " + bufArray[1], bufArray[6], bankNonce);
 						}
@@ -432,7 +432,7 @@ void* console_thread(void* arg)
 		{
 			command = bufArray[0];
 
-			if(((std::string) "deposit") == command) //if command is 'login'
+			if(((std::string) "deposit") == command) //if command is 'deposit'
 			{   
 				if(bufArray.size() == 3)
 				{
@@ -443,7 +443,7 @@ void* console_thread(void* arg)
 					cout << "Usage: deposit [username] [amount]\n";
 				}
 			} 
-			else if(((std::string) "balance") == command) //if command is 'login'
+			else if(((std::string) "balance") == command) //if command is 'balance'
 			{    
 				if(bufArray.size() == 2)
 				{
