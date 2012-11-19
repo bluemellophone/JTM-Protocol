@@ -74,6 +74,7 @@ void* formATMPacket(char packet[], std::string command, std::string username, st
 int main(int argc, char* argv[])
 {
     srand(918234098);
+    //generateRSAKeys();
 
     char packet[1024]; // Pre-ecrypted Packet
     char epacket[1408]; // Encrypted Packet
@@ -327,6 +328,8 @@ int main(int argc, char* argv[])
                     atmNonce = getRandom(32);
 
                     formATMHandshake(hpacket, "handshake", atmNonce);
+
+                    //encryptRSA((std::string) hpacket);
 
                     //cout << "[atm] Sending Bank Handshake (Length " << strlen(hpacket) << "): " << endl << (std::string) hpacket << endl << endl;
 

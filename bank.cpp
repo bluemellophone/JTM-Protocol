@@ -264,7 +264,7 @@ void* client_thread(void* arg)
 				formBankHandshake(epacket, "error", bufArray[1], bankNonce, "00000000000000000000000000000000", "0000000000000000");
 			}
 
-			//cout << "[bank] Sending Bank Handshake (Length " << strlen(epacket) << "): " << endl << (std::string) epacket << endl << endl;
+			cout << "[bank] Sending Bank Handshake (Length " << strlen(epacket) << "): " << endl << (std::string) epacket << endl << endl;
 		    
 			//send the new packet back to the client
 			if(sizeof(int) != send(csock, &length, sizeof(int), 0))

@@ -26,10 +26,19 @@
 #include "sha.h"
 #include "hex.h"
 #include "base64.h"
+#include "rsa.h"
+#include "osrng.h"
 
 using std::cout;
 using std::cin;
 using std::endl;
+
+CryptoPP::InvertibleRSAFunction ATMParams();
+CryptoPP::RSA::PrivateKey ATMPrivateKey;
+CryptoPP::RSA::PublicKey ATMPublicKey;
+CryptoPP::RSA::PrivateKey BankPrivateKey;
+CryptoPP::RSA::PublicKey BankPublicKey;
+
 
 std::string SHA512HashString(const std::string& input)
 {
@@ -202,7 +211,7 @@ std::string encryptAESPacket(std::string plaintext, std::string AESKey, std::str
     }
 
     std::string ciphertext;
-    std::string decodedCiphertext;
+    std::string encodedCiphertext;
     
     CryptoPP::AES::Encryption aesEncryption(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
     CryptoPP::CBC_Mode_ExternalCipher::Encryption cbcEncryption( aesEncryption, iv );
@@ -211,9 +220,9 @@ std::string encryptAESPacket(std::string plaintext, std::string AESKey, std::str
     stfEncryptor.Put( reinterpret_cast<const unsigned char*>( plaintext.c_str() ), plaintext.length() + 1 );
     stfEncryptor.MessageEnd();
 
-    CryptoPP::StringSource foo(ciphertext, true, new CryptoPP::Base64Encoder (new CryptoPP::StringSink(decodedCiphertext)));
+    CryptoPP::StringSource foo(ciphertext, true, new CryptoPP::Base64Encoder (new CryptoPP::StringSink(encodedCiphertext)));
     
-    return decodedCiphertext;
+    return encodedCiphertext;
 }
 
 std::string decryptAESPacket(std::string encodedCiphertext, std::string AESKey, std::string AESBlock)
@@ -245,4 +254,118 @@ std::string decryptAESPacket(std::string encodedCiphertext, std::string AESKey, 
     stfDecryptor.MessageEnd();
 
     return decryptedtext;
+}
+
+void* generateRSAKeys()
+{
+    CryptoPP::AutoSeededRandomPool rng;
+
+    cout << "Generating ATM Keys...." << endl;
+    CryptoPP::InvertibleRSAFunction params1;
+    params1.GenerateRandomWithKeySize(rng, 3072); // 256-char blocked messages
+    CryptoPP::RSA::PrivateKey tempPrivateKey1(params1);
+    ATMPrivateKey = tempPrivateKey1;
+    CryptoPP::RSA::PublicKey tempPublicKey1(params1);
+    ATMPublicKey = tempPublicKey1;
+
+
+    cout << "Generating Bank Keys...." << endl;
+    CryptoPP::InvertibleRSAFunction params2;
+    params2.GenerateRandomWithKeySize(rng, 3072);
+    CryptoPP::RSA::PrivateKey tempPrivateKey2(params2);
+    BankPrivateKey = tempPrivateKey2;
+    CryptoPP::RSA::PublicKey tempPublicKey2(params2);
+    BankPublicKey = tempPublicKey2;
+}
+
+void* encryptRSA(std::string plaintext)
+{
+    std::string plain;
+    int blockLength = 256;
+    for(int i = 0; i < ((int) plaintext.length() / ((double) blockLength)); i++)
+    {
+
+        plain = plaintext.substr(i * blockLength, blockLength);
+        ///////////////////////////////////////
+        // Pseudo Random Number Generator
+        CryptoPP::AutoSeededRandomPool rng;
+        std::string cipher, recovered, signature, encodedCiphertext, encodedSignature, decodedSignature, decodedSignature2;
+
+
+        cout << "Plaintext [RSA Block " << i << "] (Length " << plain.length() << "):" << endl << plain << endl << endl;
+
+
+        ////////////////////////////////////////////////
+        // Encryption
+        CryptoPP::RSAES_OAEP_SHA_Encryptor encryptBank(BankPublicKey);
+
+        CryptoPP::StringSource ss1(plain, true,
+            new CryptoPP::PK_EncryptorFilter(rng, encryptBank,
+                new CryptoPP::StringSink(cipher)
+           ) // PK_EncryptorFilter
+        ); // StringSource
+
+
+            //cout << "Ciphertext [RSA Block " << i << "] (Length " << cipher.length() << "):" << endl << cipher << endl << endl;
+                
+
+            CryptoPP::StringSource foo1(cipher, true, new CryptoPP::Base64Encoder (new CryptoPP::StringSink(encodedCiphertext)));
+            //cout << "Encoded Ciphertext [RSA Block " << i << "] (Length " << encodedCiphertext.length() << "):" << endl << encodedCiphertext << endl << endl;
+
+                ////////////////////////////////////////////////
+                // Sign and Encode
+                CryptoPP::RSASSA_PKCS1v15_SHA_Signer signATM(ATMPrivateKey);
+
+                CryptoPP::StringSource(encodedCiphertext, true, 
+                    new CryptoPP::SignerFilter(rng, signATM,
+                        new CryptoPP::StringSink(signature)
+                   ) // SignerFilter
+                ); // StringSource
+                
+
+                //cout << "Signature [RSA Block " << i << "] (Length " << signature.length() << "):" << endl << signature << endl << endl;
+                
+
+                CryptoPP::StringSource foo2(signature, true, new CryptoPP::Base64Encoder (new CryptoPP::StringSink(encodedSignature)));
+                
+
+                cout << "Encoded Signature [RSA Block " << i << "] (Length " << encodedSignature.length() << "):" << endl << encodedSignature << endl << endl;
+
+    
+        //         CryptoPP::StringSource foo3(encodedSignature, true, new CryptoPP::Base64Decoder (new CryptoPP::StringSink(decodedSignature)));
+                
+
+        //         cout << "Decoded Signature [RSA Block " << i << "] (Length " << decodedSignature.length() << "):" << endl << decodedSignature << endl << endl;
+
+
+        //         cout << "1" << endl;
+        //         ////////////////////////////////////////////////
+        //         // Verify and Recover
+        //         CryptoPP::RSASSA_PKCS1v15_SHA_Verifier verifyATM(ATMPublicKey);
+
+        //         cout << "2" << endl;
+        //         CryptoPP::StringSource(cipher+decodedSignature, true,
+        //             new CryptoPP::SignatureVerificationFilter(
+        //                 verifyATM, NULL,
+        //                 CryptoPP::SignatureVerificationFilter::THROW_EXCEPTION
+        //            ) // SignatureVerificationFilter
+        //         ); // StringSource
+
+
+        //         cout << "Verified signature on message [RSA Block " << i << "]" << endl;
+
+        //         CryptoPP::StringSource foo4(decodedSignature, true, new CryptoPP::Base64Decoder (new CryptoPP::StringSink(decodedSignature2)));
+     
+        // ////////////////////////////////////////////////
+        // // Decryption
+        // CryptoPP::RSAES_OAEP_SHA_Decryptor decryptBank(BankPrivateKey);
+
+        // CryptoPP::StringSource ss2(decodedSignature2, true,
+        //     new CryptoPP::PK_DecryptorFilter(rng, decryptBank,
+        //         new CryptoPP::StringSink(recovered)
+        //    ) // PK_DecryptorFilter
+        // ); // StringSource
+
+        // cout << "Recovered [RSA Block " << i << "]"<< endl << endl;
+    }
 }
