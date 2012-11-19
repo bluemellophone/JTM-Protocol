@@ -329,7 +329,13 @@ int main(int argc, char* argv[])
 
                     formATMHandshake(hpacket, "handshake", atmNonce);
 
-                    //encryptRSA((std::string) hpacket);
+                    std::string encryptedRSA, decryptedRSA;
+
+                    //encryptedRSA = encryptRSAATM((std::string) hpacket);
+                    //cout << "[atm] Encrypted Handshake (Length " << encryptedRSA.length() << "): " << endl << encryptedRSA << endl << endl;
+
+                    //decryptedRSA = decryptRSAATM(encryptedRSA);
+                    //cout << "[atm] Decrypted Handshake (Length " << decryptedRSA.length() << "): " << endl << decryptedRSA << endl << endl;
 
                     //cout << "[atm] Sending Bank Handshake (Length " << strlen(hpacket) << "): " << endl << (std::string) hpacket << endl << endl;
 
