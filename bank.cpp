@@ -29,8 +29,6 @@ void* formBankPacket(char packet[], std::string command, std::string status, std
     formPacket(packet, 1023, tempVector);
 }
 
-/* Begin definition of account functions */
-
 bool login (std::vector<std::string> info) 
 {
 	std::vector<Account>::iterator it;

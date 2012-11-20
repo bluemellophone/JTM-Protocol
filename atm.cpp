@@ -391,24 +391,24 @@ int main(int argc, char* argv[])
                                     } 
                                     else if(((std::string) "error") == bufArray[0]) //if command is 'balancd'
                                     { 
-                                        cout << "Error. Bank Handshake error." << endl;
+                                        cout << "Error.  Please contact the service team." << endl;
                                     }
                                 }
                                 else
                                 {
-                                    cout << "Error.  Bank Nonce not valid" << endl;
+                                    cout << "Error.  Please contact the service team." << endl;
                                 }
 
                             }
                             else
                             {
-                                cout << "Error.  Bank Hash not valid" << endl;
+                                cout << "Error.  Please contact the service team." << endl;
                             }
                         } 
                         else
                         {
                             // Error: Command sent from ATM not recognized.
-                            cout << "Error.  Bank Response not valid" << endl;
+                            cout << "Error.  Please contact the service team." << endl;
                         }
                     }
                 }
@@ -528,7 +528,7 @@ int main(int argc, char* argv[])
                                     }
                                     else
                                     {
-                                        cout << "Error.  Bank Nonce not valid";
+                                        cout << "Error.  Please contact the service team.";
                                         if(((std::string) "error") == bufArray[0]) //if command is 'error'
                                         {   
                                             userLoggedIn = false; username = ""; cardHash = ""; pin = "";
@@ -539,13 +539,13 @@ int main(int argc, char* argv[])
                                 }
                                 else
                                 {
-                                    cout << "Error.  Bank Hash not valid";
+                                    cout << "Error.  Please contact the service team.";
                                 }
                             } 
                             else
                             {
                                 // Error: Command sent from ATM not recognized.
-                                cout << "Error.  Bank Response not valid";
+                                cout << "Error.  Please contact the service team.";
                             }
 
                             cout << endl;
@@ -553,13 +553,13 @@ int main(int argc, char* argv[])
                         else
                         {
                             // Error: Timeout from Bank Response.
-                            cout << "Error.  Bank Response not valid";
+                            cout << "Error.  Please contact the service team.";
                         }
                     }
                 }
                 else
                 {
-                    cout << "Error.  Bank Handshake failed.";
+                    cout << "Error.  Please contact the service team.";
                 }
             }
         }

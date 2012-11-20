@@ -21,6 +21,7 @@ Crypto Libraries: Crypto++ [http://www.cryptopp.com/]
 
 Symmetric Encryption: AES-256
 	256-bit (32-character) Session Key, discarded after every logout
+	128-bit (16-character) Session Block, discarded after every logout
 
 Asymmetric Encryption: RSA (Two-way Authentication & Confidentiality)
 	Public and Private Keys for ATM
@@ -40,13 +41,16 @@ Transfer Limit = $1000 per day
 --------------------- Project Data Structures ---------------------
 
 Handshakes
-	ATM Handshake = "handshake", New / First ATM Nonce, Random Padding to (1023 - 128 - 1)
+	ATM Handshake = "handshake", New / First ATM Nonce, Random Padding to (512 - 128 - 1)
 	Hashed ATM Handshake = ATM Handshake, 128 Character SHA-512 ATM Handshake Hash 
-	RSA Encrypted, Encoded ATM Handshake = Base64Encoding[ Encrypt^RSA-BANK PUBLIC KEY( Sign^RSA-ATM PRIVATE KEY( Hashed ATM Handshake ) ) ]
+	RSA Encrypted, Encoded ATM Handshake = Base64Encoding[ Encrypt^RSA-BANK PUBLIC KEY( Hashed ATM Handshake ) ]
 
-	Bank Handshake = "handshake", Last ATM Nonce, New / First Bank Nonce, AES Session Key, AES Session Block, Random Padding to (1023 - 128 - 1)
+	Bank Handshake = "handshake", Last ATM Nonce, New / First Bank Nonce, AES Session Key, AES Session Block, Random Padding to (512 - 128 - 1)
 	Hashed Bank Handshake = Bank Handshake, 128 Character SHA-512 Bank Handshake Hash 
-	RSA Encrypted, Encoded Bank Handshake = Base64Encoding[ Encrypt^RSA-ATM PUBLIC KEY( Sign^RSA-BANK PRIVATE KEY( Hashed Bank Handshake ) ) ]
+	RSA Encrypted, Encoded Bank Handshake = Base64Encoding[ Encrypt^RSA-ATM PUBLIC KEY( Hashed Bank Handshake ) ]
+
+	Handshake Length = 512 Characters
+	RSA Encrypted, Encoded Handshake Length = 1039 Characters
 
 Messages
 	ATM Message = Command, Username, Card Number Hash, Pin, Dollar Amount, Transfer Username, New ATM Nonce, Last Bank Nonce, Random Padding to (1023 - 128 - 1)

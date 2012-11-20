@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
 {
 	if(argc != 3)
 	{
-		printf("Usage: proxy listen-port bank-connect-port\n");
+		printf("Usage: proxy [listen port] [bank connect port]\n");
 		return -1;
 	}
 	
@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
 	int lsock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if(!lsock)
 	{
-		printf("fail to create socket\n");
+		printf("[proxy] fail to create socket\n");
 		return -1;
 	}
 	
@@ -37,12 +37,12 @@ int main(int argc, char* argv[])
 	ipaddr[3] = 1;
 	if(0 != bind(lsock, reinterpret_cast<sockaddr*>(&addr_l), sizeof(addr_l)))
 	{
-		printf("failed to bind socket\n");
+		printf("[proxy] failed to bind socket\n");
 		return -1;
 	}
 	if(0 != listen(lsock, SOMAXCONN))
 	{
-		printf("failed to listen on socket\n");
+		printf("[proxy] failed to listen on socket\n");
 		return -1;
 	}
 	
@@ -72,7 +72,7 @@ void* client_thread(void* arg)
 	int bsock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if(!bsock)
 	{
-		printf("fail to create socket\n");
+		printf("[proxy] fail to create socket\n");
 		return NULL;
 	}
 	sockaddr_in addr_b;
@@ -86,7 +86,7 @@ void* client_thread(void* arg)
 	ipaddr[3] = 1;
 	if(0 != connect(bsock, reinterpret_cast<sockaddr*>(&addr_b), sizeof(addr_b)))
 	{
-		printf("fail to connect to bank\n");
+		printf("[proxy] fail to connect to bank\n");
 		return NULL;
 	}
 	
@@ -100,7 +100,7 @@ void* client_thread(void* arg)
 			break;
 		if(length > 1408)
 		{
-			printf("packet too long\n");
+			printf("[proxy] packet too long\n");
 			break;
 		}
 		if(length != recv(csock, packet, length, 0))
