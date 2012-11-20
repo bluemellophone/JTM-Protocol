@@ -100,6 +100,35 @@ bool processTransfer (std::vector<std::string> info)
 	return false;
 }
 
+bool processDeposit (std::string name, std::string amount)
+{
+	float a = (float)atof(amount.c_str());
+	if (a > 1000.00) {
+		return false;
+	}
+
+	std::vector<Account>::iterator it;
+	for (it = Database.begin(); it != Database.end(); it++) {
+		if (it->get_un() == name && it->get_deposit() + a <= 1000.00) {
+			it->increase_deposit(a);
+			it->increase_balance(a);
+			return true;
+		}
+	}
+	return false;
+}
+
+float bankBalance (std::string name)
+{
+	std::vector<Account>::iterator it;
+	for (it = Database.begin(); it != Database.end(); it++) {
+		if (it->get_un() == name) {
+			return it->get_balance();
+		}
+	}
+	return -1;
+}
+
 bool logout (std::vector<std::string> info) 
 {
 	std::vector<Account>::iterator it;
@@ -313,7 +342,7 @@ void* client_thread(void* arg)
 						if(((std::string) "login") == command) //if command is 'login'
 						{   
 							bool flag = login (bufArray);
-							if (flag || true) { // temoprarily turn off account checking for testing purposes.
+							if (flag) { // temoprarily turn off account checking for testing purposes.
 								formBankPacket(packet, command, "login of " + bufArray[1], bufArray[6], bankNonce);
 							}
 							else {
@@ -323,8 +352,11 @@ void* client_thread(void* arg)
 						else if(((std::string) "balance") == command) //if command is 'balance'
 						{   
 							float flag = checkBalance (bufArray);
-							if (flag >= 0 || true) { // temoprarily turn off account checking for testing purposes.
-								formBankPacket(packet, command, "balance of " + bufArray[1], bufArray[6], bankNonce);
+							if (flag >= 0) { // temoprarily turn off account checking for testing purposes.
+								std::stringstream ss;
+								ss << flag;
+								std::string balance = ss.str();
+								formBankPacket(packet, command, "balance of " + bufArray[1] + " " + balance, bufArray[6], bankNonce);
 							}
 							else {
 								formBankPacket(packet, "error", "ATM Balance not valid", bufArray[6], bankNonce);
@@ -352,7 +384,15 @@ void* client_thread(void* arg)
 						}  
 						else if(((std::string) "logout") == command) //if command is 'logout'
 						{   
-							formBankPacket(packet, command, "logout of " + bufArray[1], bufArray[6], bankNonce);
+							bool flag = logout (bufArray);
+							if (flag)
+							{
+								formBankPacket(packet, command, "logout of " + bufArray[1], bufArray[6], bankNonce);
+							}
+							else
+							{
+								formBankPacket(packet, "error", "logout not valid", bufArray[6], bankNonce);
+							}
 						}
 						else
 						{
@@ -436,32 +476,44 @@ void* console_thread(void* arg)
 			{   
 				if(bufArray.size() == 3)
 				{
-					cout << "Deposited " << bufArray[2] << " into " << bufArray[1] << "'s account\n";
+					bool flag = processDeposit (bufArray[1], bufArray[2]);
+					if (flag) {
+						std::cout << "Deposited " << bufArray[2] << " into " << bufArray[1] << "'s account\n";
+					}
+					else {
+						std::cout << "Invalid deposit operation\n";
+					}
 				}
 				else
 				{
-					cout << "Usage: deposit [username] [amount]\n";
+					std::cout << "Usage: deposit [username] [amount]\n";
 				}
 			} 
 			else if(((std::string) "balance") == command) //if command is 'balance'
 			{    
 				if(bufArray.size() == 2)
 				{
-					cout << "Balance for " << bufArray[1] << "\n";
+					float flag = bankBalance (bufArray[1]);
+					if (flag >= 0) {
+						std::cout << "Balance for " << bufArray[1] << ": " << flag << "\n";
+					}
+					else {
+						std::cout << "Invalid balance operation\n";
+					}
 				}
 				else
 				{
-					cout << "Usage: balance [username]\n";
+					std::cout << "Usage: balance [username]\n";
 				}
 			} 
 			else
 			{
-				cout << "Command '" << command << "' not recognized.\n";
+				std::cout << "Command '" << command << "' not recognized.\n";
 			}
 		}
 		else
 		{
-			cout << "Usage: [command] [argument...]\n";
+			std::cout << "Usage: [command] [argument...]\n";
 		} 
 
 	}

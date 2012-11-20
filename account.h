@@ -1,16 +1,33 @@
 #include <string>
 #include <vector>
-
+#include <fstream>
+#include <algorithm>
 using std::string;
+
+string Hex(string inputStr)
+{
+    string retStr = "";
+    for(int i = 0; i < inputStr.length(); i++)
+    {
+        if(('0' <= inputStr[i] && inputStr[i] <= '9') || ('A' <= inputStr[i] && inputStr[i] <= 'F'))
+        {
+            retStr += inputStr[i];
+        }
+        else
+        {
+            retStr += "0";
+        }
+    }
+
+    return retStr;
+}
 
 class Account {
 	private:
 		string username;
-		int accountNumber;
+		string accountNumber;
 		int pin;
 		float balance;
-		int loginAttempts;
-		int timeout;
 		bool logged_in;
 		float dailyDeposit;
 		float dailyWithdraw;
@@ -18,27 +35,23 @@ class Account {
 
 	public:
 		Account () {}
-		Account (string un, int num, int p, float b)
+		Account (string un, string num, int p, float b)
 		{
 			username = un;
 			accountNumber = num;
 			pin = p;
 			balance = b;
-			loginAttempts = 0;
-			timeout = 0;
 			logged_in = false;
 			dailyDeposit = 0;
 			dailyWithdraw = 0;
 			dailyTransfer = 0;
 		}
 		string get_un () { return username; }
-		int get_account () { return accountNumber; }
+		string get_account () { return accountNumber; }
 		int get_pin () { return pin; }
 		float get_balance () { return balance; }
-		int get_loginAttempts () { return loginAttempts; }
 		void increase_balance (float b) { balance += b; }
 		void reduce_balance (float b) { balance -= b; }
-		void increment_login () { loginAttempts++; }
 		bool get_logged_in () { return logged_in; }
 		void set_logged_in_true () { logged_in = true; }
 		void set_logged_in_false () { logged_in = false; }
@@ -50,9 +63,46 @@ class Account {
 		void increase_transfer (float val) { dailyTransfer += val; }
 }; 	
 
-static Account alice ("alice", 12345, 1234, 100.00);
-static Account bob ("bob", 67890, 6789, 50.00);
-static Account eve ("eve", 13579, 2468, 0);
+
+string aHash () {
+	string cardHash;
+	std::ifstream aCard ("cards/alice.card");
+	string aliceCard((std::istreambuf_iterator<char>(aCard)),std::istreambuf_iterator<char>());
+	cardHash = aliceCard;
+	cardHash = cardHash.substr(0,128);
+	std::transform(cardHash.begin(), cardHash.end(), cardHash.begin(), ::toupper);
+	cardHash = Hex(cardHash);
+	return cardHash;
+}
+
+static Account alice ("alice", aHash(), 123456, 100.00);
+
+
+string bHash () {
+	string cardHash;
+	std::ifstream bCard ("cards/bob.card");
+	string bobCard((std::istreambuf_iterator<char>(bCard)),std::istreambuf_iterator<char>());
+	cardHash = bobCard;
+	cardHash = cardHash.substr(0,128);
+	std::transform(cardHash.begin(), cardHash.end(), cardHash.begin(), ::toupper);
+	cardHash = Hex(cardHash);
+	return cardHash;
+}
+
+static Account bob ("bob", bHash(), 678900, 50.00);
+
+string eHash() {
+	string cardHash;
+	std::ifstream eCard ("cards/eve.card");
+	string eveCard((std::istreambuf_iterator<char>(eCard)),std::istreambuf_iterator<char>());
+	cardHash = eveCard;
+	cardHash = cardHash.substr(0,128);
+	std::transform(cardHash.begin(), cardHash.end(), cardHash.begin(), ::toupper);
+	cardHash = Hex(cardHash);
+	return cardHash;
+}
+
+static Account eve ("eve", eHash(), 246800, 0);
 
 std::vector<Account> init() 
 {
