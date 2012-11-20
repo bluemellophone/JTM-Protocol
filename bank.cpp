@@ -8,6 +8,8 @@
 void* client_thread(void* arg);
 void* console_thread(void* arg);
 
+const static float MAX_BAL = 2000000000;
+
 void* formBankHandshake(char packet[], std::string command, std::string atmNonce, std::string bankNonce, std::string AESKey, std::string AESSession)
 {
     std::vector<std::string> tempVector;
@@ -35,10 +37,17 @@ bool login (std::vector<std::string> info)
 	int pin = atoi(info.at(3).c_str());
 
 	for (it = Database.begin(); it != Database.end(); it++) {
-		if (it->get_un() == info.at(1) && it->get_pin() == pin && !it->get_logged_in()) {
+		if (it->get_un() == info.at(1) && it->get_pin() == pin && !it->get_logged_in() && !it->get_locked()) {
 			it->set_logged_in_true ();
 			return true;
 		} 
+		else if (it->get_un() == info.at(1) && it->get_pin() != pin && !it->get_logged_in()) {
+			it->increase_login_attempts();
+			if (it->get_login_attempts() >= 3) {
+				it->lock();
+			}
+			return false;
+		}
 	}
 	return false;
 }
@@ -87,7 +96,7 @@ bool processTransfer (std::vector<std::string> info)
 			it->increase_transfer (b);
 			std::vector<Account>::iterator foo;
 			for (foo = Database.begin(); foo != Database.end(); foo++) {
-				if (foo->get_un() == info.at(5)) {
+				if (foo->get_un() == info.at(5) && foo->get_balance() + b <= MAX_BAL) {
 					foo->increase_balance (b);
 					return true;
 				}
@@ -106,7 +115,7 @@ bool processDeposit (std::string name, std::string amount)
 
 	std::vector<Account>::iterator it;
 	for (it = Database.begin(); it != Database.end(); it++) {
-		if (it->get_un() == name && it->get_deposit() + a <= 1000.00) {
+		if (it->get_un() == name && it->get_deposit() + a <= 1000.00 && it->get_balance() + a <= MAX_BAL) {
 			it->increase_deposit(a);
 			it->increase_balance(a);
 			return true;

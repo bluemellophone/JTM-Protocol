@@ -11,6 +11,8 @@ class Account {
 		float dailyDeposit;
 		float dailyWithdraw;
 		float dailyTransfer;
+		bool locked;
+		int loginAttempts;
 
 	public:
 		Account () {}
@@ -24,6 +26,8 @@ class Account {
 			dailyDeposit = 0;
 			dailyWithdraw = 0;
 			dailyTransfer = 0;
+			locked = false;
+			loginAttempts = 0;
 		}
 		std::string get_un () { return username; }
 		std::string get_account () { return accountNumber; }
@@ -40,6 +44,10 @@ class Account {
 		void increase_deposit (float val) { dailyDeposit += val; }
 		void increase_withdraw (float val) { dailyWithdraw += val; }
 		void increase_transfer (float val) { dailyTransfer += val; }
+		bool get_locked () { return locked; }
+		void lock () { locked = true; }
+		int get_login_attempts () { return loginAttempts; }
+		void increase_login_attempts () { loginAttempts++; }
 }; 	
 
 static Account alice ("alice", getCardHash("cards/alice.card"), 123456, 100.00);
