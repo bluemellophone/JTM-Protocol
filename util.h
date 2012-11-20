@@ -28,15 +28,11 @@
 #include "base64.h"
 #include "rsa.h"
 #include "osrng.h"
+#include "files.h"
 
 using std::cout;
 using std::cin;
 using std::endl;
-
-CryptoPP::RSA::PrivateKey ATMPrivateKey;
-CryptoPP::RSA::PublicKey ATMPublicKey;
-CryptoPP::RSA::PrivateKey BankPrivateKey;
-CryptoPP::RSA::PublicKey BankPublicKey;
 
 std::string SHA512HashString(const std::string& input)
 {
@@ -102,6 +98,19 @@ std::string toAlpha(std::string inputStr)
     }
 
     return retStr;
+}
+
+std::string getCardHash(std::string cardFile) 
+{
+    std::ifstream card(cardFile.c_str());
+    std::string tempHash((std::istreambuf_iterator<char>(card)),std::istreambuf_iterator<char>());
+    
+    std::string cardHash = tempHash;
+    cardHash = cardHash.substr(0,128);
+    std::transform(cardHash.begin(), cardHash.end(), cardHash.begin(), ::toupper);
+    cardHash = toHex(cardHash);
+    
+    return cardHash;
 }
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) 
@@ -254,85 +263,113 @@ std::string decryptAESPacket(std::string encodedCiphertext, std::string AESKey, 
     return decryptedtext;
 }
 
+void* Save(const std::string& filename, const CryptoPP::BufferedTransformation& bt)
+{
+    CryptoPP::FileSink file(filename.c_str());
+
+    bt.CopyTo(file);
+    file.MessageEnd();
+}
+
+void* SavePrivateKey(const std::string& filename, const CryptoPP::RSA::PrivateKey& key)
+{
+    CryptoPP::ByteQueue queue;
+    key.Save(queue);
+
+    Save(filename, queue);
+}
+
+void* SavePublicKey(const std::string& filename, const CryptoPP::RSA::PublicKey& key)
+{
+    CryptoPP::ByteQueue queue;
+    key.Save(queue);
+
+    Save(filename, queue);
+}
+
+void Load(const std::string& filename, CryptoPP::BufferedTransformation& bt)
+{
+    CryptoPP::FileSource file(filename.c_str(), true /*pumpAll*/);
+
+    file.TransferTo(bt);
+    bt.MessageEnd();
+}
+
+void LoadPublicKey(const std::string& filename, CryptoPP::RSA::PublicKey& key)
+{
+    CryptoPP::ByteQueue queue;
+    Load(filename, queue);
+
+    key.Load(queue);    
+}
+
+void LoadPrivateKey(const std::string& filename, CryptoPP::RSA::PrivateKey& key)
+{
+    CryptoPP::ByteQueue queue;
+    Load(filename, queue);
+
+    key.Load(queue);    
+}
+
 void* generateRSAKeys()
 {
     CryptoPP::AutoSeededRandomPool rng;
 
     cout << "Generating ATM Keys...." << endl;
     CryptoPP::InvertibleRSAFunction params1;
-    params1.GenerateRandomWithKeySize(rng, 3072); // 256-char blocked messages
+    params1.GenerateRandomWithKeySize(rng, 6144); // 512-char blocked messages
     CryptoPP::RSA::PrivateKey tempPrivateKey1(params1);
-    ATMPrivateKey = tempPrivateKey1;
+    SavePrivateKey("keys/atm", tempPrivateKey1);
     CryptoPP::RSA::PublicKey tempPublicKey1(params1);
-    ATMPublicKey = tempPublicKey1;
+    SavePublicKey("keys/atm.pub", tempPublicKey1);
 
 
     cout << "Generating Bank Keys...." << endl;
     CryptoPP::InvertibleRSAFunction params2;
-    params2.GenerateRandomWithKeySize(rng, 3072);
+    params2.GenerateRandomWithKeySize(rng, 6144); // 512-char blocked messages
     CryptoPP::RSA::PrivateKey tempPrivateKey2(params2);
-    BankPrivateKey = tempPrivateKey2;
+    SavePrivateKey("keys/bank", tempPrivateKey2);
     CryptoPP::RSA::PublicKey tempPublicKey2(params2);
-    BankPublicKey = tempPublicKey2;
+    SavePublicKey("keys/bank.pub", tempPublicKey2);
+
 }
 
-std::string encryptRSAATM(std::string plaintext)
+std::string encryptRSAPacket(std::string plaintext, std::string keyFile)
 {
+    std::string ciphertext, encodedCiphertext;
     CryptoPP::AutoSeededRandomPool rng;
-    std::string plain, cipher, encodedCiphertext, returnVal;
-    int blockLength = 256;
-    for(int i = 0; i < ((int) plaintext.length() / ((double) blockLength)); i++)
-    {
-        plain = "";
-        cipher = "";
-        encodedCiphertext = "";
-
-        plain = plaintext.substr(i * blockLength, blockLength);
-
-        CryptoPP::RSAES_OAEP_SHA_Encryptor encryptBank(BankPublicKey);
-
-        CryptoPP::StringSource ss1(plain, true,
-            new CryptoPP::PK_EncryptorFilter(rng, encryptBank,
-                new CryptoPP::StringSink(cipher)
-           ) // PK_EncryptorFilter
-        ); // StringSource
-
-
-        CryptoPP::StringSource foo1(cipher, true, new CryptoPP::Base64Encoder (new CryptoPP::StringSink(encodedCiphertext)));
-        returnVal += encodedCiphertext;
-        if(i != ((int) plaintext.length() / ((double) blockLength)) - 1)
-            returnVal += ((std::string) ",");
-    }
-
-    return returnVal;
-}
-
-std::string decryptRSAATM(std::string ciphertext)
-{
-    CryptoPP::AutoSeededRandomPool rng;
-    std::vector<std::string> cipherArray = split(ciphertext, ',', cipherArray);
-    std::string recovered, encodedCiphertext, decodedCiphertext, returnVal;
     
-    for(int i = 0; i < cipherArray.size(); i++)
-    {
-        recovered = "";
-        encodedCiphertext = "";
-        decodedCiphertext = "";
+    CryptoPP::RSA::PublicKey publicKey;
+    LoadPublicKey(keyFile, publicKey);
+    CryptoPP::RSAES_OAEP_SHA_Encryptor encrypt(publicKey);    
 
-        encodedCiphertext = cipherArray[i];
-        cout << encodedCiphertext << endl << endl;
-        CryptoPP::StringSource foo4(encodedCiphertext, true, new CryptoPP::Base64Decoder (new CryptoPP::StringSink(decodedCiphertext)));
+    CryptoPP::StringSource ss1(plaintext, true,
+        new CryptoPP::PK_EncryptorFilter(rng, encrypt,
+            new CryptoPP::StringSink(ciphertext)
+       ) // PK_EncryptorFilter
+    ); // StringSource
 
-        CryptoPP::RSAES_OAEP_SHA_Decryptor decryptBank(BankPrivateKey);
+    CryptoPP::StringSource foo1(ciphertext, true, new CryptoPP::Base64Encoder (new CryptoPP::StringSink(encodedCiphertext)));
+    
+    return encodedCiphertext;
+}
 
-        CryptoPP::StringSource ss2(decodedCiphertext, true,
-            new CryptoPP::PK_DecryptorFilter(rng, decryptBank,
-                new CryptoPP::StringSink(recovered)
-           ) // PK_DecryptorFilter
-        ); // StringSource
+std::string decryptRSAPacket(std::string encodedCiphertext, std::string keyFile)
+{
+    std::string ciphertext, plaintext;
+    CryptoPP::AutoSeededRandomPool rng;
 
-        returnVal += recovered;
-    }
+    CryptoPP::RSA::PrivateKey privateKey;
+    LoadPrivateKey(keyFile, privateKey);
+    CryptoPP::RSAES_OAEP_SHA_Decryptor decrypt(privateKey);
 
-    return returnVal;
+    CryptoPP::StringSource foo4(encodedCiphertext, true, new CryptoPP::Base64Decoder (new CryptoPP::StringSink(ciphertext)));
+
+    CryptoPP::StringSource ss2(ciphertext, true,
+        new CryptoPP::PK_DecryptorFilter(rng, decrypt,
+            new CryptoPP::StringSink(plaintext)
+       ) // PK_DecryptorFilter
+    ); // StringSource
+
+    return plaintext;
 }

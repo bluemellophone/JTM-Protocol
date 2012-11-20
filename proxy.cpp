@@ -108,11 +108,7 @@ void* client_thread(void* arg)
 			printf("[proxy] fail to read packet\n");
 			break;
 		}
-
-		//cout << "[bank] ATM Packet (Length " << strlen(packet) << "): " << endl << ((std::string) packet) << endl << endl;
-
-		//TODO: tamper with packet going from ATM to bank
-		
+		cout << "[atm] Length: " << length << endl; 
 		//forward packet to bank
 		if(sizeof(int) != send(bsock, &length, sizeof(int), 0))
 		{
@@ -133,7 +129,7 @@ void* client_thread(void* arg)
 		}
 		if(length > 1408)
 		{
-			printf("packet too long\n");
+			printf("proxy] packet too long: %d\n", length);
 			break;
 		}
 		if(length != recv(bsock, packet, length, 0))
@@ -141,11 +137,8 @@ void* client_thread(void* arg)
 			printf("[proxy] fail to read packet\n");
 			break;
 		}
-
-		//cout << "[bank] Bank Packet (Length " << strlen(packet) << "): " << endl << ((std::string) packet) << endl << endl;
 		
-		//TODO: tamper with packet going from bank to ATM
-
+		cout << "[bank] Length: " << length << endl;
 		//forward packet to ATM
 		if(sizeof(int) != send(csock, &length, sizeof(int), 0))
 		{

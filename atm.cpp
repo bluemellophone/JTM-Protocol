@@ -74,11 +74,10 @@ void* formATMPacket(char packet[], std::string command, std::string username, st
 int main(int argc, char* argv[])
 {
     srand(918234098);
-    //generateRSAKeys();
 
     char packet[1024]; // Pre-ecrypted Packet
     char epacket[1408]; // Encrypted Packet
-    char hpacket[1024]; // Handshake Packet
+    char hpacket[1041]; // Handshake Packet
     char buf[80];
     std::vector<std::string> bufArray;
     
@@ -98,7 +97,10 @@ int main(int argc, char* argv[])
     std::string recievedHashedData;
     std::string calculatedHash;
     std::string encryptedPacket;
-    std::string decryptedPacket;
+    std::string decryptedPacket;   
+    std::string encryptedRSA;
+    std::string decryptedRSA;
+
 
     int length = 0;
     int sendPacket = 0;
@@ -192,26 +194,19 @@ int main(int argc, char* argv[])
 
                         if(cardFile)
                         {
-                            sendPacket = 1; // Send packet because valid command
+                            sendPacket = 1; 
 
-                            username = bufArray[1];
-                            username = username.substr(0,32);
-                            std::transform(username.begin(), username.end(), username.begin(), ::tolower);
-                            username = toAlpha(username);
+                            username = temp;
 
                             // obtain card hash
-                            std::string temp((std::istreambuf_iterator<char>(cardFile)),std::istreambuf_iterator<char>());
-                            cardHash = temp;
-                            cardHash = cardHash.substr(0,128);
-                            std::transform(cardHash.begin(), cardHash.end(), cardHash.begin(), ::toupper);
-                            cardHash = toHex(cardHash);
+                            cardHash = getCardHash("cards/" + username + ".card");
 
                             // obtain pin form user
                             pin = getPin("PIN: ");
                             pin = pin.substr(0,6);
                             while(pin.length() < 6)
                             {
-                                pin = "0" + pin;
+                                pin = pin + "0";
                             }
                             pin = toNumbers(pin);
                         }
@@ -229,7 +224,7 @@ int main(int argc, char* argv[])
                 {
                     cout << "User already logged in.  Due to this action, the current user has now been logged out.  \n"; 
 
-                    sendPacket = 1; // Send packet because valid command
+                    sendPacket = 1; 
                     command = "logout";
                 }
             } 
@@ -239,7 +234,7 @@ int main(int argc, char* argv[])
                 {
                     if(bufArray.size() == 1)
                     {
-                        sendPacket = 1; // Send packet because valid command
+                        sendPacket = 1; 
                     }
                     else
                     {
@@ -300,7 +295,7 @@ int main(int argc, char* argv[])
                         {
                             cout << "Timeout: user inactivity has caused a timeout, the current user has now been logged out.  \n";
                         }
-                        sendPacket = 1; // Send packet because valid command
+                        sendPacket = 1; 
                         command = "logout";
                     }
                     else
@@ -329,15 +324,14 @@ int main(int argc, char* argv[])
 
                     formATMHandshake(hpacket, "handshake", atmNonce);
 
-                    std::string encryptedRSA, decryptedRSA;
-
-                    //encryptedRSA = encryptRSAATM((std::string) hpacket);
+                    encryptedRSA = encryptRSAPacket((std::string) hpacket, "keys/bank.pub");
                     //cout << "[atm] Encrypted Handshake (Length " << encryptedRSA.length() << "): " << endl << encryptedRSA << endl << endl;
 
-                    //decryptedRSA = decryptRSAATM(encryptedRSA);
-                    //cout << "[atm] Decrypted Handshake (Length " << decryptedRSA.length() << "): " << endl << decryptedRSA << endl << endl;
-
-                    //cout << "[atm] Sending Bank Handshake (Length " << strlen(hpacket) << "): " << endl << (std::string) hpacket << endl << endl;
+                    for(int i = 0; i < encryptedRSA.length(); i++)
+                    {
+                        hpacket[i] = encryptedRSA[i];
+                    }
+                    length = encryptedRSA.length();
 
                     length = strlen(hpacket);
                     if(sizeof(int) != send(sock, &length, sizeof(int), 0))
@@ -352,13 +346,13 @@ int main(int argc, char* argv[])
                     }
                     
                     hpacket[0] = '\0';
-                     
+                    
                     if(sizeof(int) != recv(sock, &length, sizeof(int), 0))
                     {
                         printf("fail to read packet length\n");
                         break;
                     }
-                    if(length > 512)
+                    if(length > 1039)
                     {
                         printf("packet too long: %d\n", length);
                         
@@ -370,11 +364,12 @@ int main(int argc, char* argv[])
                     }
 
                     //cout << "[atm] Recieved Bank Handshake (Length " << strlen(hpacket) << "): " << endl << (std::string) hpacket << endl << endl;
-
-                    if(length == 512)
+                    if(length == 1039)
                     {
+
+                        decryptedRSA = decryptRSAPacket((std::string) hpacket, "keys/atm");
                         bufArray.clear();
-                        bufArray = split((std::string) hpacket, ',', bufArray);
+                        bufArray = split(decryptedRSA, ',', bufArray);
 
                         if(bufArray.size() == 7)
                         {
@@ -502,7 +497,7 @@ int main(int argc, char* argv[])
                                         if(((std::string) "login") == command) //if command is 'login'
                                         {   
                                             userLoggedIn = true;
-                                            cout << "User logged in successfully.";
+                                            cout << bufArray[1];
                                         } 
                                         else if(((std::string) "balance") == command) //if command is 'balancd'
                                         { 

@@ -1,31 +1,10 @@
-#include <string>
-#include <vector>
-#include <fstream>
-#include <algorithm>
-using std::string;
 
-string Hex(string inputStr)
-{
-    string retStr = "";
-    for(int i = 0; i < inputStr.length(); i++)
-    {
-        if(('0' <= inputStr[i] && inputStr[i] <= '9') || ('A' <= inputStr[i] && inputStr[i] <= 'F'))
-        {
-            retStr += inputStr[i];
-        }
-        else
-        {
-            retStr += "0";
-        }
-    }
-
-    return retStr;
-}
+#include "util.h"
 
 class Account {
 	private:
-		string username;
-		string accountNumber;
+		std::string username;
+		std::string accountNumber;
 		int pin;
 		float balance;
 		bool logged_in;
@@ -35,7 +14,7 @@ class Account {
 
 	public:
 		Account () {}
-		Account (string un, string num, int p, float b)
+		Account (std::string un, std::string num, int p, float b)
 		{
 			username = un;
 			accountNumber = num;
@@ -46,8 +25,8 @@ class Account {
 			dailyWithdraw = 0;
 			dailyTransfer = 0;
 		}
-		string get_un () { return username; }
-		string get_account () { return accountNumber; }
+		std::string get_un () { return username; }
+		std::string get_account () { return accountNumber; }
 		int get_pin () { return pin; }
 		float get_balance () { return balance; }
 		void increase_balance (float b) { balance += b; }
@@ -63,46 +42,9 @@ class Account {
 		void increase_transfer (float val) { dailyTransfer += val; }
 }; 	
 
-
-string aHash () {
-	string cardHash;
-	std::ifstream aCard ("cards/alice.card");
-	string aliceCard((std::istreambuf_iterator<char>(aCard)),std::istreambuf_iterator<char>());
-	cardHash = aliceCard;
-	cardHash = cardHash.substr(0,128);
-	std::transform(cardHash.begin(), cardHash.end(), cardHash.begin(), ::toupper);
-	cardHash = Hex(cardHash);
-	return cardHash;
-}
-
-static Account alice ("alice", aHash(), 123456, 100.00);
-
-
-string bHash () {
-	string cardHash;
-	std::ifstream bCard ("cards/bob.card");
-	string bobCard((std::istreambuf_iterator<char>(bCard)),std::istreambuf_iterator<char>());
-	cardHash = bobCard;
-	cardHash = cardHash.substr(0,128);
-	std::transform(cardHash.begin(), cardHash.end(), cardHash.begin(), ::toupper);
-	cardHash = Hex(cardHash);
-	return cardHash;
-}
-
-static Account bob ("bob", bHash(), 678900, 50.00);
-
-string eHash() {
-	string cardHash;
-	std::ifstream eCard ("cards/eve.card");
-	string eveCard((std::istreambuf_iterator<char>(eCard)),std::istreambuf_iterator<char>());
-	cardHash = eveCard;
-	cardHash = cardHash.substr(0,128);
-	std::transform(cardHash.begin(), cardHash.end(), cardHash.begin(), ::toupper);
-	cardHash = Hex(cardHash);
-	return cardHash;
-}
-
-static Account eve ("eve", eHash(), 246800, 0);
+static Account alice ("alice", getCardHash("cards/alice.card"), 123456, 100.00);
+static Account bob ("bob", getCardHash("cards/bob.card"), 678900, 50.00);
+static Account eve ("eve", getCardHash("cards/eve.card"), 246800, 0);
 
 std::vector<Account> init() 
 {
