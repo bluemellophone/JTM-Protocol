@@ -86,6 +86,20 @@ std::string toNumbers(std::string inputStr)
     return retStr;
 }
 
+bool isNumbersOnly(std::string inputStr)
+{
+    std::string retStr = "";
+    for(int i = 0; i < inputStr.length(); i++)
+    {
+        if(!('0' <= inputStr[i] && inputStr[i] <= '9'))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 std::string toAlpha(std::string inputStr)
 {
     std::string retStr = "";
@@ -130,14 +144,18 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
 std::string getRandom(int length)
 {   
 	std::string retStr = "";
+    CryptoPP::AutoSeededRandomPool rng;
+    int random;
 	int num = 0;
-    bool hex = true;
+    bool hex = false;
+
 	for(unsigned int i = 0; i < length; ++i)
 	{
+        random = (int) rng.GenerateByte();
         if(hex)
         {
             // Generate Random Hex String
-    		num = (int) (rand() % 16);
+    		num = (int) (random % 16);
     		if(num < 10)
     		{
     			retStr += (num + '0');
@@ -149,8 +167,8 @@ std::string getRandom(int length)
         }
         else
         {
-            // Generate Random String With ASCII Range (33, 126)
-            num = (int) (rand() % (126 - 48));
+            // Generate Random String With ASCII Range (48, 126)
+            num = (int) (random % (126 - 48));
             retStr += (num + '0');
         }
 	}

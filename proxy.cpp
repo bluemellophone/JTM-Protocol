@@ -108,7 +108,7 @@ void* client_thread(void* arg)
 			printf("[proxy] fail to read packet\n");
 			break;
 		}
-		cout << "[atm] Length: " << length << endl; 
+		
 		//forward packet to bank
 		if(sizeof(int) != send(bsock, &length, sizeof(int), 0))
 		{
@@ -138,7 +138,6 @@ void* client_thread(void* arg)
 			break;
 		}
 		
-		cout << "[bank] Length: " << length << endl;
 		//forward packet to ATM
 		if(sizeof(int) != send(csock, &length, sizeof(int), 0))
 		{

@@ -141,7 +141,6 @@ bool logout (std::vector<std::string> info)
 
 int main(int argc, char* argv[])
 {
-	srand(812301230);
     //generateRSAKeys();
 
 	if(argc != 2)
@@ -202,9 +201,6 @@ void* client_thread(void* arg)
 	//int csock = (int)arg;
 	long unsigned int csock = (long unsigned int)arg;
 
-	//printf("[bank] client ID #%d connected\n", csock);
-	printf("[bank] client ID #%ld connected\n\n", csock);
-
 	//input loop
 	int length;
 	bool valid;
@@ -256,10 +252,10 @@ void* client_thread(void* arg)
 		else if(length == 1039)
 		{	
         	epacket[1039] = '\0';
-			printf("[bank] Recieved ATM Handshake (Length %d): \n%s\n\n", (int) ((std::string) epacket).length(), epacket);
+			//printf("[bank] Recieved Encrypted ATM Handshake (Length %d): \n%s\n\n", (int) ((std::string) epacket).length(), epacket);
 			
             decryptedHandshake = decryptRSAPacket((std::string) epacket, "keys/bank");
-            //cout << "[atm] Decrypted ATM Handshake (Length " << decryptedHandshake.length() << "): " << endl << decryptedHandshake << endl << endl;
+            //cout << "[atm] Recieved ATM Handshake (Length " << decryptedHandshake.length() << "): " << endl << decryptedHandshake << endl << endl;
 			
 			bufArray = split(decryptedHandshake, ',', bufArray);
 			
@@ -330,7 +326,7 @@ void* client_thread(void* arg)
 
 			//printf("[bank] Recieved ATM Encrypted Packet (Length %d): \n%s\n", (int) ((std::string) epacket).length(), epacket);
 			decryptedPacket = decryptAESPacket((std::string) epacket, sessionAESKey, sessionAESBlock);
-			cout << "[bank] Recieved ATM Packet (Length " << decryptedPacket.length() << "): " << endl << decryptedPacket << endl << endl;
+			//cout << "[bank] Recieved ATM Packet (Length " << decryptedPacket.length() << "): " << endl << decryptedPacket << endl << endl;
 
 			for(int i = 0; i < decryptedPacket.length(); i++)
             {
@@ -455,9 +451,6 @@ void* client_thread(void* arg)
 			printf("[bank] ATM Packet configured incorrectly.\n");
 		}
 	}
-
-	//printf("[bank] client ID #%d disconnected\n", csock);
-	printf("[bank] client ID #%ld disconnected\n", csock);
 
 	close(csock);
 	return NULL;
