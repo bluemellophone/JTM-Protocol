@@ -251,9 +251,12 @@ void* client_thread(void* arg)
 		}
 		else if(length == 1039)
 		{	
+			bankNonce = getRandom(32);
 			command = "error";
 			sessionAESKey = "NOT USED";
 			sessionAESBlock = "NOT USED";
+			epacket[1039] = '\0';
+                    
 			//printf("[bank] Recieved Encrypted ATM Handshake (Length %d): \n%s\n\n", (int) ((std::string) epacket).length(), epacket);
 			
             decryptedPacket = decryptRSAPacket((std::string) epacket, "keys/bank");
@@ -269,10 +272,9 @@ void* client_thread(void* arg)
                 {
 					command = bufArray[0];
 						
-					if(((std::string) "handshake") == command) //if command is 'login'
+					if(((std::string) "handshake") == command)
 					{   
 						atmNonce = bufArray[1];
-						bankNonce = getRandom(32);
 						sessionAESKey = getRandom(32);
 						sessionAESBlock = getRandom(16);
 					} 
@@ -326,7 +328,7 @@ void* client_thread(void* arg)
 						atmNonce = bufArray[6];
 						bankNonce = getRandom(32);
 
-						if(((std::string) "login") == command) //if command is 'login'
+						if(((std::string) "login") == command)
 						{   
 							if(login(bufArray)) 
 							{
@@ -334,7 +336,7 @@ void* client_thread(void* arg)
 								status = "Login Successful";
 							}
 						} 
-						else if(((std::string) "balance") == command) //if command is 'balance'
+						else if(((std::string) "balance") == command)
 						{   
 							float flag = checkBalance(bufArray);
 							if(flag >= 0) 
@@ -346,7 +348,7 @@ void* client_thread(void* arg)
 								status = "Balance: $" + balance;
 							}
 						} 
-						else if(((std::string) "withdraw") == command) //if command is 'withdraw'
+						else if(((std::string) "withdraw") == command)
 						{   
 							if(processWithdraw(bufArray)) 
 							{
@@ -354,7 +356,7 @@ void* client_thread(void* arg)
 								status = "Withdraw: $" + bufArray[4];
 							}
 						}
-						else if(((std::string) "transfer") == command) //if command is 'transfer'
+						else if(((std::string) "transfer") == command)
 						{   
 							if(processTransfer(bufArray)) 
 							{
@@ -362,7 +364,7 @@ void* client_thread(void* arg)
 								status = "Transfer Successful";
 							}
 						}  
-						else if(((std::string) "logout") == command) //if command is 'logout'
+						else if(((std::string) "logout") == command)
 						{   
 							if(logout (bufArray))
 							{
@@ -445,7 +447,7 @@ void* console_thread(void* arg)
 		{
 			command = bufArray[0];
 
-			if(((std::string) "deposit") == command) //if command is 'deposit'
+			if(((std::string) "deposit") == command)
 			{   
 				if(bufArray.size() == 3)
 				{
@@ -461,7 +463,7 @@ void* console_thread(void* arg)
 					std::cout << "Usage: deposit [username] [amount]\n";
 				}
 			} 
-			else if(((std::string) "balance") == command) //if command is 'balance'
+			else if(((std::string) "balance") == command)
 			{    
 				if(bufArray.size() == 2)
 				{

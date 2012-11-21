@@ -158,7 +158,7 @@ std::string getRandom(int length)
     CryptoPP::AutoSeededRandomPool rng;
     int random;
 	int num = 0;
-    bool hex = false;
+    bool hex = true;
 
 	for(unsigned int i = 0; i < length; ++i)
 	{

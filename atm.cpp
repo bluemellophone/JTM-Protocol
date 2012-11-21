@@ -315,8 +315,10 @@ int main(int argc, char* argv[])
                     sessionAESKey = "";
                     sessionAESBlock = "";
                     atmNonce = getRandom(32);
-
+                    
                     formATMHandshake(hpacket, atmNonce);
+                    //cout << "[atm] Sending Bank Handshake (Length " << strlen(hpacket) << "): " << endl << (std::string) hpacket << endl << endl;
+                    
                     encryptedPacket = encryptRSAPacket((std::string) hpacket, "keys/bank.pub");
                     
                     //cout << "[atm] Encrypted Handshake (Length " << encryptedPacket.length() << "): " << endl << encryptedPacket << endl << endl;
@@ -327,6 +329,7 @@ int main(int argc, char* argv[])
                     }
                     
                     length = strlen(hpacket);
+                    
                     if(sizeof(int) != send(sock, &length, sizeof(int), 0))
                     {
                         break;
@@ -362,6 +365,7 @@ int main(int argc, char* argv[])
                             {
                                 if(atmNonce == bufArray[1])
                                 {
+                                    atmNonce = getRandom(32);
                                     if(((std::string) "handshake") == bufArray[0])
                                     {   
                                         bankNonce = bufArray[2];
@@ -456,6 +460,7 @@ int main(int argc, char* argv[])
                                 {
                                     if(atmNonce == bufArray[2])
                                     {
+                                        atmNonce = getRandom(32);
                                         command = bufArray[0];
                                         status = bufArray[1];
                                         bankNonce = bufArray[3];
