@@ -262,6 +262,8 @@ std::string encryptAESPacket(std::string plaintext, std::string AESKey, std::str
 
 std::string decryptAESPacket(std::string encodedCiphertext, std::string AESKey, std::string AESBlock)
 {
+encodedCiphertext = encodedCiphertext.substr(0,1408);
+
     byte key[ CryptoPP::AES::MAX_KEYLENGTH], iv[ CryptoPP::AES::BLOCKSIZE ];
     
     std::vector<char> bytes1(AESKey.begin(), AESKey.end());

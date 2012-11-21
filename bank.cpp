@@ -205,8 +205,7 @@ int main(int argc, char* argv[])
 
 void* client_thread(void* arg)
 {
-	//int csock = (int)arg;
-	long int csock = (long int)arg;
+	int csock = (int)arg;
 	
 	//input loop
 	char packet[1024];
@@ -218,8 +217,8 @@ void* client_thread(void* arg)
 	std::string atmNonce;
 	std::string bankNonce;
 
-    std::string sessionAESKey;
-    std::string sessionAESBlock;
+    	std::string sessionAESKey;
+    	std::string sessionAESBlock;
 	std::string encryptedPacket;
 	std::string decryptedPacket;
 
@@ -249,13 +248,13 @@ void* client_thread(void* arg)
 			printf("[bank] fail to read packet\n");
 			break;
 		}
-		else if(length == 1039)
+		else if(length == 1040)
 		{	
 			bankNonce = getRandom(32);
 			command = "error";
 			sessionAESKey = "NOT USED";
 			sessionAESBlock = "NOT USED";
-			epacket[1039] = '\0';
+			epacket[1040] = '\0';
                     
 			decryptedPacket = decryptRSAPacket((std::string) epacket, "keys/bank");
             bufArray.clear();
@@ -275,7 +274,7 @@ void* client_thread(void* arg)
 					} 
 				}
 			} 
-
+			
 			formBankHandshake(epacket, command, atmNonce, bankNonce, sessionAESKey, sessionAESBlock);
 		    encryptedPacket = encryptRSAPacket((std::string) epacket, "keys/atm.pub");
             
@@ -388,7 +387,7 @@ void* client_thread(void* arg)
 	        epacket[1408] = '\0';
 
 			length =  strlen(epacket);
-	        if(sizeof(int) != send(csock, &length, sizeof(int), 0))
+	        	if(sizeof(int) != send(csock, &length, sizeof(int), 0))
 			{
 				printf("[bank] fail to send packet length\n");
 				break;

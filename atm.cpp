@@ -317,7 +317,7 @@ int main(int argc, char* argv[])
                     atmNonce = getRandom(32);
                     
                     formATMHandshake(hpacket, atmNonce);
-                    encryptedPacket = encryptRSAPacket((std::string) hpacket, "keys/bank.pub");
+	            encryptedPacket = encryptRSAPacket((std::string) hpacket, "keys/bank.pub");
                     
                     for(int i = 0; i < encryptedPacket.length(); i++)
                     {
@@ -345,7 +345,7 @@ int main(int argc, char* argv[])
                     {
                         break;
                     }
-                    if(length == 1039)
+                    if(length == 1040)
                     {
                         decryptedPacket = decryptRSAPacket((std::string) hpacket, "keys/atm");
                         
@@ -395,7 +395,7 @@ int main(int argc, char* argv[])
                     messageTimeout = time(NULL);
                     atmNonce = getRandom(32);
                     formATMPacket(packet, command, username, cardHash, pin, item1, item2, atmNonce, bankNonce);
-                    encryptedPacket = encryptAESPacket((std::string) packet, sessionAESKey, sessionAESBlock);
+		    encryptedPacket = encryptAESPacket((std::string) packet, sessionAESKey, sessionAESBlock);
                     
                     for(int i = 0; i < encryptedPacket.length(); i++)
                     {
@@ -436,8 +436,8 @@ int main(int argc, char* argv[])
                     else if(length == 1408)
                     {
                         if(time(NULL) - messageTimeout < 30) // Bank Response needs to be in less that 30 seconds.
-                        {
-                            decryptedPacket = decryptAESPacket((std::string) epacket, sessionAESKey, sessionAESBlock);
+                        {    
+			decryptedPacket = decryptAESPacket((std::string) epacket, sessionAESKey, sessionAESBlock);
                             
                             bufArray.clear();
                             bufArray = split(decryptedPacket, ',', bufArray);
