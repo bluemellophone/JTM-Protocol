@@ -21,13 +21,13 @@ int getch()
     return ch;
 }
 
-std::string getPin(const char *prompt)
+std::string getPin(std::string prompt)
 {
     std::string pin;
     unsigned char ch = 0;
 
     cout << prompt;
-    while((ch=getch()) != 10) // Enter
+    while((ch = getch()) != 10 && pin.length() <= 6) // Enter
     {
         if(ch == 127) // Backspace
         {
@@ -37,7 +37,7 @@ std::string getPin(const char *prompt)
                 pin.resize(pin.length() - 1);
             }
         }
-        else
+        else if('0' <= ch && ch <= '9')
         {
             pin += ch;
             cout << '*';
@@ -49,10 +49,10 @@ std::string getPin(const char *prompt)
     return pin;
 }
 
-void* formATMHandshake(char packet[], std::string command, std::string atmNonce)
+void* formATMHandshake(char packet[], std::string atmNonce)
 {
     std::vector<std::string> tempVector;
-    tempVector.push_back(command);
+    tempVector.push_back((std::string) "handshake");
     tempVector.push_back(atmNonce);
     formPacket(packet, 512, tempVector);
 }
@@ -73,10 +73,10 @@ void* formATMPacket(char packet[], std::string command, std::string username, st
 
 int main(int argc, char* argv[])
 {
-    char packet[1024]; // Pre-ecrypted Packet
-    char epacket[1408]; // Encrypted Packet
-    char hpacket[1041]; // Handshake Packet
-    char buf[80];
+    char packet[1024];
+    char epacket[1408];
+    char hpacket[1041];
+    char buf[50];
     std::vector<std::string> bufArray;
     
     std::string command;
@@ -88,24 +88,21 @@ int main(int argc, char* argv[])
     std::string atmNonce;
     std::string bankNonce;
     std::string temp; 
+    std::string status;
 
     std::string sessionAESKey;
     std::string sessionAESBlock;
-    std::string recievedHash;
-    std::string recievedHashedData;
-    std::string calculatedHash;
     std::string encryptedPacket;
-    std::string decryptedPacket;   
-    std::string encryptedRSA;
-    std::string decryptedRSA;
+    std::string decryptedPacket;
+    std::string errorString = "Error.  Please contact the service team.\n";
 
-
-    int length = 0;
-    int sendPacket = 0;
+    int length;
     int userTimeout = 0;
     int messageTimeout = 0;
     int sessionTimeout = 0; 
 
+    bool sendPacket = false;
+    bool printError = false;
     bool userLoggedIn = false;
     bool validHandshake = false;
     
@@ -139,30 +136,30 @@ int main(int argc, char* argv[])
 
     while(1)
     {
-        sendPacket = 0;
+        sendPacket = false;
+        printError = false;
         command = "";
         item1 = "NOT USED";
         item2 = "NOT USED";
         buf[0] = '\0';
         packet[0] = '\0';
-        bufArray.clear();
-
+        epacket[0] = '\0';
+        hpacket[0] = '\0';
+        
         // Print the prompt
         printf("atm> ");
-        fgets(buf, 79, stdin);
+        fgets(buf, 49, stdin);
         buf[strlen(buf)-1] = '\0';  //trim off trailing newline
         
         // Parse data
+        bufArray.clear();
         bufArray = split((std::string) buf, ' ', bufArray);
        
         //input parsing
         if(bufArray.size() >= 1 && ((std::string) "") != bufArray[0])
         {
-            //cout << "[atm] Time since last command: " << time(NULL) - userTimeout << endl;
-            
-            if(userTimeout == 0 || time(NULL) - userTimeout <= 90)
+            if(time(NULL) - userTimeout <= 90 || !userLoggedIn)
             { 
-                // User timeout has to be less than 90 seconds to continue
                 command = bufArray[0];
             }
             else
@@ -170,15 +167,14 @@ int main(int argc, char* argv[])
                 command = "timeout";
             }
 
-            if(time(NULL) - sessionTimeout > 180) // Session timeout happens after 180 seconds.  At that point, generate new session key.
+            userTimeout = time(NULL);
+            
+            if(time(NULL) - sessionTimeout > 180)
             { 
                 validHandshake = false;
             }
             
-            userTimeout = time(NULL);
-            
-            // There exists a command, check the command
-            if(((std::string) "login") == command) //if command is 'login'
+            if(((std::string) "login") == command)
             {   
                 if(!userLoggedIn)
                 {
@@ -188,18 +184,17 @@ int main(int argc, char* argv[])
                         temp = temp.substr(0,32);
                         std::transform(temp.begin(), temp.end(), temp.begin(), ::tolower);
                         temp = toAlpha(temp);
-                        std::ifstream cardFile(("cards/" + temp + ".card").c_str());
+                        std::string cardFilename = "cards/" + temp + ".card";
+                        std::ifstream cardFile(cardFilename.c_str());
 
                         if(cardFile)
                         {
-                            sendPacket = 1; 
+                            sendPacket = true; 
 
                             username = temp;
 
-                            // obtain card hash
-                            cardHash = getCardHash("cards/" + username + ".card");
+                            cardHash = getCardHash(cardFilename);
 
-                            // obtain pin form user
                             pin = getPin("PIN: ");
                             pin = pin.substr(0,6);
                             while(pin.length() < 6)
@@ -210,7 +205,8 @@ int main(int argc, char* argv[])
                         }
                         else
                         {
-                            cout << bufArray[1] <<"'s ATM Card not found.\n";
+                            temp = "";
+                            cout << "ATM card not found.\n";
                         }
                     }
                     else
@@ -222,17 +218,17 @@ int main(int argc, char* argv[])
                 {
                     cout << "User already logged in.  Due to this action, the current user has now been logged out.  \n"; 
 
-                    sendPacket = 1; 
+                    sendPacket = true; 
                     command = "logout";
                 }
             } 
-            else if(((std::string) "balance") == command) //if command is 'balance'
+            else if(((std::string) "balance") == command)
             {   
                 if(userLoggedIn)
                 {
                     if(bufArray.size() == 1)
                     {
-                        sendPacket = 1; 
+                        sendPacket = true; 
                     }
                     else
                     {
@@ -244,13 +240,13 @@ int main(int argc, char* argv[])
                     cout << "User not logged in.  \n";
                 }
             } 
-            else if(((std::string) "withdraw") == command) //if command is 'withdraw'
+            else if(((std::string) "withdraw") == command)
             {   
                 if(userLoggedIn)
                 {
                     if(bufArray.size() == 2 && isNumbersOnly(bufArray[1]))
                     {
-                        sendPacket = 1;
+                        sendPacket = true;
                         item1 = bufArray[1];
                     }
                     else
@@ -263,13 +259,13 @@ int main(int argc, char* argv[])
                     cout << "User not logged in.  \n";
                 }
             } 
-            else if(((std::string) "transfer") == command) //if command is 'transfer'
+            else if(((std::string) "transfer") == command)
             {   
                 if(userLoggedIn)
                 {
                     if(bufArray.size() == 3 && isNumbersOnly(bufArray[1]))
                     {
-                        sendPacket = 1;
+                        sendPacket = true;
                         item1 = bufArray[1];
                         item2 = bufArray[2];
                     }
@@ -291,9 +287,9 @@ int main(int argc, char* argv[])
                     {
                         if(((std::string) "timeout") == command)
                         {
-                            cout << "Timeout: user inactivity has caused a timeout, the current user has now been logged out.  \n";
+                            cout << "Timeout: user inactivity has caused a timeout, the current user has now been logged out.\n";
                         }
-                        sendPacket = 1; 
+                        sendPacket = true; 
                         command = "logout";
                     }
                     else
@@ -320,14 +316,14 @@ int main(int argc, char* argv[])
                     sessionAESBlock = "";
                     atmNonce = getRandom(32);
 
-                    formATMHandshake(hpacket, "handshake", atmNonce);
-                    encryptedRSA = encryptRSAPacket((std::string) hpacket, "keys/bank.pub");
+                    formATMHandshake(hpacket, atmNonce);
+                    encryptedPacket = encryptRSAPacket((std::string) hpacket, "keys/bank.pub");
                     
-                    //cout << "[atm] Encrypted Handshake (Length " << encryptedRSA.length() << "): " << endl << encryptedRSA << endl << endl;
+                    //cout << "[atm] Encrypted Handshake (Length " << encryptedPacket.length() << "): " << endl << encryptedPacket << endl << endl;
 
-                    for(int i = 0; i < encryptedRSA.length(); i++)
+                    for(int i = 0; i < encryptedPacket.length(); i++)
                     {
-                        hpacket[i] = encryptedRSA[i];
+                        hpacket[i] = encryptedPacket[i];
                     }
                     
                     length = strlen(hpacket);
@@ -352,24 +348,21 @@ int main(int argc, char* argv[])
                     }
 
                     //cout << "[atm] Recieved Bank Handshake (Length " << strlen(hpacket) << "): " << endl << (std::string) hpacket << endl << endl;
+                    
                     if(length == 1039)
                     {
-
-                        decryptedRSA = decryptRSAPacket((std::string) hpacket, "keys/atm");
+                        decryptedPacket = decryptRSAPacket((std::string) hpacket, "keys/atm");
+                        
                         bufArray.clear();
-                        bufArray = split(decryptedRSA, ',', bufArray);
+                        bufArray = split(decryptedPacket, ',', bufArray);
 
                         if(bufArray.size() == 7)
-                        {
-                            recievedHash = bufArray[6];
-                            recievedHash = recievedHash.substr(0, recievedHash.length() - 1);
-                            recievedHashedData = bufArray[0] + "," + bufArray[1] + "," + bufArray[2] + "," + bufArray[3] + "," + bufArray[4] + "," + bufArray[5];
-                            calculatedHash = SHA512HashString(recievedHashedData);
-                            if(recievedHash == calculatedHash)
+                        {   
+                            if(compareSHA512Hash(bufArray[6], bufArray[0] + "," + bufArray[1] + "," + bufArray[2] + "," + bufArray[3] + "," + bufArray[4] + "," + bufArray[5]))
                             {
                                 if(atmNonce == bufArray[1])
                                 {
-                                    if(((std::string) "handshake") == bufArray[0]) //if command is 'login'
+                                    if(((std::string) "handshake") == bufArray[0])
                                     {   
                                         bankNonce = bufArray[2];
                                         sessionAESKey = bufArray[3];
@@ -377,32 +370,32 @@ int main(int argc, char* argv[])
                                         validHandshake = true;
                                         sessionTimeout = time(NULL);
                                     } 
-                                    else if(((std::string) "error") == bufArray[0]) //if command is 'balancd'
+                                    else if(((std::string) "error") == bufArray[0])
                                     { 
-                                        cout << "Error.  Please contact the service team." << endl;
+                                        printError = true;
                                     }
                                 }
                                 else
                                 {
-                                    cout << "Error.  Please contact the service team." << endl;
+                                    printError = true;
                                 }
 
                             }
                             else
                             {
-                                cout << "Error.  Please contact the service team." << endl;
+                                printError = true;
                             }
                         } 
                         else
                         {
-                            // Error: Command sent from ATM not recognized.
-                            cout << "Error.  Please contact the service team." << endl;
+                            printError = true;
                         }
                     }
                 }
 
                 if(validHandshake)
                 {
+                    messageTimeout = time(NULL);
                     atmNonce = getRandom(32);
                     formATMPacket(packet, command, username, cardHash, pin, item1, item2, atmNonce, bankNonce);
                     
@@ -415,7 +408,6 @@ int main(int argc, char* argv[])
                         epacket[i] = encryptedPacket[i];
                     }
 
-                    messageTimeout = time(NULL);
                     
                     length = encryptedPacket.length();
                     if(sizeof(int) != send(sock, &length, sizeof(int), 0))
@@ -449,56 +441,49 @@ int main(int argc, char* argv[])
                     }
                     else if(length == 1408)
                     {
-                        if(time(NULL) - messageTimeout < 1) // Bank Response needs to be in less that 3 seconds.
+                        if(time(NULL) - messageTimeout < 30) // Bank Response needs to be in less that 30 seconds.
                         {
                             //printf("[atm] Recieved Bank Encrypted Packet (Length %d): \n%s\n\n", (int) ((std::string) epacket).length(), epacket);
                             decryptedPacket = decryptAESPacket((std::string) epacket, sessionAESKey, sessionAESBlock);
                             //cout << "[atm] Recieved Bank Packet (Length " << decryptedPacket.length() << "): " << endl << decryptedPacket << endl << endl;
-
-                            for(int i = 0; i < decryptedPacket.length(); i++)
-                            {
-                                packet[i] = decryptedPacket[i];
-                            }
                         
                             bufArray.clear();
-                            bufArray = split((std::string) packet, ',', bufArray);
+                            bufArray = split(decryptedPacket, ',', bufArray);
 
                             if(bufArray.size() == 6)
                             {
-                                recievedHash = bufArray[5];
-                                recievedHash = recievedHash.substr(0, recievedHash.length() - 1);
-                                recievedHashedData = bufArray[0] + "," + bufArray[1] + "," + bufArray[2] + "," + bufArray[3] + "," + bufArray[4];
-                                calculatedHash = SHA512HashString(recievedHashedData);
-                                
-                                //cout << recievedHash << " (Length " << recievedHash.length() << ")" << endl;
-                                //cout << calculatedHash << " (Length " << calculatedHash.length() << ")" << endl;
-                                if(recievedHash == calculatedHash)
+                                if(compareSHA512Hash(bufArray[5], bufArray[0] + "," + bufArray[1] + "," + bufArray[2] + "," + bufArray[3] + "," + bufArray[4]))
                                 {
                                     if(atmNonce == bufArray[2])
                                     {
                                         command = bufArray[0];
+                                        status = bufArray[1];
                                         bankNonce = bufArray[3];
                                         if(((std::string) "login") == command)
                                         {   
                                             userLoggedIn = true;
-                                            cout << bufArray[1];
+                                            cout << status;
                                         } 
                                         else if(((std::string) "balance") == command)
                                         { 
-                                            cout << bufArray[1];
+                                            cout << status;
                                         } 
                                         else if(((std::string) "withdraw") == command)
                                         {   
-                                            cout << bufArray[1];
+                                            cout << status;
                                         }
                                         else if(((std::string) "transfer") == command)
                                         {   
-                                            cout << bufArray[1];
+                                            cout << status;
                                         }  
                                         else if(((std::string) "logout") == command)
                                         {   
-                                            cout << bufArray[1];
+                                            cout << status;
                                             userTimeout = 0;
+                                            messageTimeout = 0;
+                                            sessionTimeout = 0;
+                                            sessionAESKey = "";
+                                            sessionAESBlock = "";
                                             validHandshake = false;
                                             userLoggedIn = false; 
                                             username = ""; 
@@ -507,42 +492,41 @@ int main(int argc, char* argv[])
                                         } 
                                         else if(((std::string) "error") == command)
                                         {   
-                                            cout << bufArray[1];
+                                            cout << status;
                                         }
                                     }
                                     else
                                     {
-                                        cout << "Error.  Please contact the service team.";
-                                        if(((std::string) "error") == bufArray[0])
-                                        {   
-                                            userLoggedIn = false; username = ""; cardHash = ""; pin = "";
-                                            cout << bufArray[1];
-                                        }
+                                        printError = true;
                                     }
-
                                 }
                                 else
                                 {
-                                    cout << "Error.  Please contact the service team.";
+                                    printError = true;
                                 }
                             } 
                             else
                             {
-                                cout << "Error.  Please contact the service team.";
+                                printError = true;
                             }
 
                             cout << endl;
                         }
                         else
                         {
-                            cout << "Error.  Please contact the service team.";
+                            printError = true;
                         }
                     }
                 }
                 else
                 {
-                    cout << "Error.  Please contact the service team.";
+                    printError = true;
                 }
+            }
+
+            if(printError)
+            {
+                cout << errorString;
             }
         }
         else

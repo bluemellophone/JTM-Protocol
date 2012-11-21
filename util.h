@@ -34,20 +34,31 @@ using std::cout;
 using std::cin;
 using std::endl;
 
-std::string SHA512HashString(const std::string& input)
+std::string SHA512HashString(std::string input)
 {
+    std::string output;
     CryptoPP::SHA512 hash;
     byte digest[ CryptoPP::SHA512::DIGESTSIZE ];
 
     hash.CalculateDigest( digest, (byte*) input.c_str(), input.length() );
 
     CryptoPP::HexEncoder encoder;
-    std::string output;
     encoder.Attach( new CryptoPP::StringSink( output ) );
     encoder.Put( digest, sizeof(digest) );
     encoder.MessageEnd();
 
     return output;
+}
+
+bool compareSHA512Hash(std::string receivedHash, std::string calculateHash)
+{
+    while(receivedHash.length() > 128)
+    {
+        receivedHash = receivedHash.substr(0, receivedHash.length() - 1);
+    }
+    calculateHash = SHA512HashString(calculateHash);
+
+    return receivedHash == calculateHash;
 }
 
 std::string toHex(std::string inputStr)
@@ -86,20 +97,6 @@ std::string toNumbers(std::string inputStr)
     return retStr;
 }
 
-bool isNumbersOnly(std::string inputStr)
-{
-    std::string retStr = "";
-    for(int i = 0; i < inputStr.length(); i++)
-    {
-        if(!('0' <= inputStr[i] && inputStr[i] <= '9'))
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 std::string toAlpha(std::string inputStr)
 {
     std::string retStr = "";
@@ -112,6 +109,20 @@ std::string toAlpha(std::string inputStr)
     }
 
     return retStr;
+}
+
+bool isNumbersOnly(std::string inputStr)
+{
+    std::string retStr = "";
+    for(int i = 0; i < inputStr.length(); i++)
+    {
+        if(!('0' <= inputStr[i] && inputStr[i] <= '9'))
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 std::string getCardHash(std::string cardFile) 
@@ -187,11 +198,10 @@ void* formPacket(char packet[], int packetLength , std::vector<std::string> &ite
     for(int i = 0; i < items.size(); i++)
     {
         item = items[i];
-        packetData += item;
-        packetData += ","; 
+        packetData += item + ","; 
         for(unsigned int j = 0; j < item.length(); ++j)
         {
-            packet[len + j] = item[j];  //add username to packet
+            packet[len + j] = item[j];
         }
         
         len += item.length();

@@ -97,11 +97,3 @@ Card Files: 128-character SHA-512 Hash
 		Account / Card Number: 6767 4248 6174 1091
 		Account / Card Hash: 3B79391F77F14C0D512E996F6778C6B093A05F5807107CC060790D59D21C734357BAA569D147DCE412BBE3C533240C0A61BF1F0D190C76118D99D5CDBA15FF98
 
-User Account Data Structure
-	accountUsername
-	accountCardNumberHash
-	accountPinHash
-	accountBalance  (protect against overflow and underflow)
-	accountLoginAttempts
-	accountLoginTimeout
-

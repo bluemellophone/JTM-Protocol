@@ -23,9 +23,9 @@ class Account {
 			pin = p;
 			balance = b;
 			logged_in = false;
-			dailyDeposit = 0;
-			dailyWithdraw = 0;
-			dailyTransfer = 0;
+			dailyDeposit = 0.0;
+			dailyWithdraw = 0.0;
+			dailyTransfer = 0.0;
 			locked = false;
 			loginAttempts = 0;
 		}
@@ -33,26 +33,27 @@ class Account {
 		std::string get_account () { return accountNumber; }
 		int get_pin () { return pin; }
 		float get_balance () { return balance; }
-		void increase_balance (float b) { balance += b; }
-		void reduce_balance (float b) { balance -= b; }
+		void* increase_balance (float b) { if(b >= 0) balance += b; }
+		void* reduce_balance (float b) { if(b >= 0) balance -= b; }
 		bool get_logged_in () { return logged_in; }
-		void set_logged_in_true () { logged_in = true; }
-		void set_logged_in_false () { logged_in = false; }
+		void* set_logged_in_true () { logged_in = true; }
+		void* set_logged_in_false () { logged_in = false; }
 		float get_deposit () { return dailyDeposit; }
 		float get_withdraw () { return dailyWithdraw; }
 		float get_transfer () { return dailyTransfer; }
-		void increase_deposit (float val) { dailyDeposit += val; }
-		void increase_withdraw (float val) { dailyWithdraw += val; }
-		void increase_transfer (float val) { dailyTransfer += val; }
+		void* increase_deposit (float val) { if(val >= 0) dailyDeposit += val; }
+		void* increase_withdraw (float val) { if(val >= 0) dailyWithdraw += val; }
+		void* increase_transfer (float val) { if(val >= 0) dailyTransfer += val; }
 		bool get_locked () { return locked; }
-		void lock () { locked = true; }
+		void* lock () { locked = true; }
 		int get_login_attempts () { return loginAttempts; }
-		void increase_login_attempts () { loginAttempts++; }
+		void* increase_login_attempts () { loginAttempts++; }
+		void* reset_login_attempts () { loginAttempts = 0; }
 }; 	
 
 static Account alice ("alice", getCardHash("cards/alice.card"), 123456, 100.00);
 static Account bob ("bob", getCardHash("cards/bob.card"), 678900, 50.00);
-static Account eve ("eve", getCardHash("cards/eve.card"), 246800, 0);
+static Account eve ("eve", getCardHash("cards/eve.card"), 246800, 0.00);
 
 std::vector<Account> init() 
 {

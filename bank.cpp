@@ -37,13 +37,13 @@ bool login (std::vector<std::string> info)
 	int pin = atoi(info.at(3).c_str());
 
 	for (it = Database.begin(); it != Database.end(); it++) {
-		if (it->get_un() == info.at(1) && it->get_pin() == pin && !it->get_logged_in() && !it->get_locked()) {
+		if(it->get_un() == info.at(1) && it->get_pin() == pin && !it->get_logged_in() && !it->get_locked()) {
 			it->set_logged_in_true ();
 			return true;
 		} 
-		else if (it->get_un() == info.at(1) && it->get_pin() != pin && !it->get_logged_in()) {
+		else if(it->get_un() == info.at(1) && it->get_pin() != pin && !it->get_logged_in()) {
 			it->increase_login_attempts();
-			if (it->get_login_attempts() >= 3) {
+			if(it->get_login_attempts() >= 3) {
 				it->lock();
 			}
 			return false;
@@ -57,7 +57,7 @@ float checkBalance (std::vector<std::string> info)
 	std::vector<Account>::iterator it;
 
 	for (it = Database.begin(); it != Database.end(); it++) {
-		if (it->get_un() == info.at(1) && it->get_logged_in()) {
+		if(it->get_un() == info.at(1) && it->get_logged_in()) {
 			return it->get_balance();
 		}
 	}
@@ -67,13 +67,13 @@ float checkBalance (std::vector<std::string> info)
 bool processWithdraw (std::vector<std::string> info)
 {
 	float b = (float)atof(info.at(4).c_str());
-	if (b > 1000.00) {
+	if(b > 1000.00) {
 		return false;
 	}
 
 	std::vector<Account>::iterator it;
 	for (it = Database.begin(); it != Database.end(); it++) {
-		if (it->get_un() == info.at(1) && it->get_logged_in() && b <= it->get_balance() && it->get_withdraw() + b <= 1000.00) {
+		if(it->get_un() == info.at(1) && it->get_logged_in() && b <= it->get_balance() && it->get_withdraw() + b <= 1000.00) {
 			it->reduce_balance(b);
 			it->increase_withdraw (b);
 			return true;
@@ -85,18 +85,18 @@ bool processWithdraw (std::vector<std::string> info)
 bool processTransfer (std::vector<std::string> info)
 {
 	float b = (float)atof(info.at(4).c_str());
-	if (b > 1000.00) {
+	if(b > 1000.00) {
 		return false;
 	}
 
 	std::vector<Account>::iterator it;
 	for (it = Database.begin(); it != Database.end(); it++) {
-		if (it->get_un() == info.at(1) && it->get_logged_in() && b <= it->get_balance() && it->get_transfer() + b <= 1000.00) {
+		if(it->get_un() == info.at(1) && it->get_logged_in() && b <= it->get_balance() && it->get_transfer() + b <= 1000.00) {
 			it->reduce_balance(b);
 			it->increase_transfer (b);
 			std::vector<Account>::iterator foo;
 			for (foo = Database.begin(); foo != Database.end(); foo++) {
-				if (foo->get_un() == info.at(5) && foo->get_balance() + b <= MAX_BAL) {
+				if(foo->get_un() == info.at(5) && foo->get_balance() + b <= MAX_BAL) {
 					foo->increase_balance (b);
 					return true;
 				}
@@ -109,13 +109,13 @@ bool processTransfer (std::vector<std::string> info)
 bool processDeposit (std::string name, std::string amount)
 {
 	float a = (float)atof(amount.c_str());
-	if (a > 1000.00) {
+	if(a > 1000.00) {
 		return false;
 	}
 
 	std::vector<Account>::iterator it;
 	for (it = Database.begin(); it != Database.end(); it++) {
-		if (it->get_un() == name && it->get_deposit() + a <= 1000.00 && it->get_balance() + a <= MAX_BAL) {
+		if(it->get_un() == name && it->get_deposit() + a <= 1000.00 && it->get_balance() + a <= MAX_BAL) {
 			it->increase_deposit(a);
 			it->increase_balance(a);
 			return true;
@@ -128,7 +128,7 @@ float bankBalance (std::string name)
 {
 	std::vector<Account>::iterator it;
 	for (it = Database.begin(); it != Database.end(); it++) {
-		if (it->get_un() == name) {
+		if(it->get_un() == name) {
 			return it->get_balance();
 		}
 	}
@@ -140,7 +140,7 @@ bool logout (std::vector<std::string> info)
 	std::vector<Account>::iterator it;
 
 	for (it = Database.begin(); it != Database.end(); it++) {
-		if (it->get_un() == info.at(1) && it->get_logged_in()) {
+		if(it->get_un() == info.at(1) && it->get_logged_in()) {
 			it->set_logged_in_false();
 			return true;
 		}
@@ -150,8 +150,6 @@ bool logout (std::vector<std::string> info)
 
 int main(int argc, char* argv[])
 {
-    //generateRSAKeys();
-
 	if(argc != 2)
 	{
 		printf("Usage: bank listen-port\n");
@@ -211,36 +209,29 @@ void* client_thread(void* arg)
 	long unsigned int csock = (long unsigned int)arg;
 
 	//input loop
-	int length;
-	bool valid;
 	char packet[1024];
 	char epacket[1408];
 	std::vector<std::string> bufArray;
 
-    std::string sessionAESKey;
-    std::string sessionAESBlock;
-	
-	std::string bankNonce;
 	std::string command;
 	std::string status;
+	std::string atmNonce;
+	std::string bankNonce;
 
-	std::string recievedHash;
-	std::string recievedHashedData;
-	std::string calculatedHash;
+    std::string sessionAESKey;
+    std::string sessionAESBlock;
 	std::string encryptedPacket;
 	std::string decryptedPacket;
-	std::string decryptedHandshake;
-	std::string encryptedRSA;
+
+	int length;
+	bool sendPacket;
 
 	while(1)
 	{
-		valid = false;
+		sendPacket = false;
 		packet[0] = '\0';	
         epacket[0] = '\0';
-		bufArray.clear();
-		recievedHash = "";
-		recievedHashedData = "";
-		calculatedHash = "";
+        command = "";
 		status = "";
 
 		//read the packet from the ATM
@@ -260,64 +251,48 @@ void* client_thread(void* arg)
 		}
 		else if(length == 1039)
 		{	
-        	epacket[1039] = '\0';
+			command = "error";
+			sessionAESKey = "NOT USED";
+			sessionAESBlock = "NOT USED";
 			//printf("[bank] Recieved Encrypted ATM Handshake (Length %d): \n%s\n\n", (int) ((std::string) epacket).length(), epacket);
 			
-            decryptedHandshake = decryptRSAPacket((std::string) epacket, "keys/bank");
-            //cout << "[atm] Recieved ATM Handshake (Length " << decryptedHandshake.length() << "): " << endl << decryptedHandshake << endl << endl;
-			
-			bufArray = split(decryptedHandshake, ',', bufArray);
+            decryptedPacket = decryptRSAPacket((std::string) epacket, "keys/bank");
+            
+            //cout << "[atm] Recieved ATM Handshake (Length " << decryptedPacket.length() << "): " << endl << decryptedPacket << endl << endl;
+		
+			bufArray.clear();
+			bufArray = split(decryptedPacket, ',', bufArray);
 			
 			if(bufArray.size() == 4)
 			{
-				recievedHash = bufArray[3];
-				recievedHash = recievedHash.substr(0, recievedHash.length() - 1);
-				recievedHashedData = bufArray[0] + "," + bufArray[1] + "," + bufArray[2];
-				calculatedHash = SHA512HashString(recievedHashedData);
-
-				//cout << recievedHash << " (Length " << recievedHash.length() << ")" << endl;
-				//cout << calculatedHash << " (Length " << calculatedHash.length() << ")" << endl;
-				if(recievedHash == calculatedHash)
-				{
+				if(compareSHA512Hash(bufArray[3], bufArray[0] + "," + bufArray[1] + "," + bufArray[2]))
+                {
 					command = bufArray[0];
 						
 					if(((std::string) "handshake") == command) //if command is 'login'
 					{   
+						atmNonce = bufArray[1];
 						bankNonce = getRandom(32);
 						sessionAESKey = getRandom(32);
 						sessionAESBlock = getRandom(16);
-
-						formBankHandshake(epacket, "handshake", bufArray[1], bankNonce, sessionAESKey, sessionAESBlock);
 					} 
-					else
-					{
-						formBankHandshake(epacket, "error", bufArray[1], bankNonce, "00000000000000000000000000000000", "0000000000000000");
-					}
-				}
-				else
-				{
-					formBankHandshake(epacket, "error", bufArray[1], bankNonce, "00000000000000000000000000000000", "0000000000000000");
 				}
 			} 
-			else
-			{
-				// Error: Command sent from ATM not recognized.
-				formBankHandshake(epacket, "error", bufArray[1], bankNonce, "00000000000000000000000000000000", "0000000000000000");
-			}
+
+			formBankHandshake(epacket, command, atmNonce, bankNonce, sessionAESKey, sessionAESBlock);
 
 			//cout << "[bank] Sending Bank Handshake (Length " << strlen(epacket) << "): " << endl << (std::string) epacket << endl << endl;
 		    
-		    encryptedRSA = encryptRSAPacket((std::string) epacket, "keys/atm.pub");
+		    encryptedPacket = encryptRSAPacket((std::string) epacket, "keys/atm.pub");
             
-            for(int i = 0; i < encryptedRSA.length(); i++)
+            for(int i = 0; i < encryptedPacket.length(); i++)
             {
-                epacket[i] = encryptedRSA[i];
+                epacket[i] = encryptedPacket[i];
             }
 
-            length = strlen(epacket);
-
-			//cout << "[atm] Sending Encrypted Handshake (Length " << strlen(epacket) << "): " << endl << ((std::string) epacket) << endl << endl;
-			//send the new packet back to the client
+            //cout << "[atm] Sending Encrypted Handshake (Length " << strlen(epacket) << "): " << endl << ((std::string) epacket) << endl << endl;
+			
+			length = strlen(epacket);
 			if(sizeof(int) != send(csock, &length, sizeof(int), 0))
 			{
 				printf("[bank] fail to send packet length\n");
@@ -332,50 +307,39 @@ void* client_thread(void* arg)
 		else if(length == 1408)
 		{
 			// RECIEVED AES PACKET
+			packet[0] = '\0';
 
 			//printf("[bank] Recieved ATM Encrypted Packet (Length %d): \n%s\n", (int) ((std::string) epacket).length(), epacket);
 			decryptedPacket = decryptAESPacket((std::string) epacket, sessionAESKey, sessionAESBlock);
 			//cout << "[bank] Recieved ATM Packet (Length " << decryptedPacket.length() << "): " << endl << decryptedPacket << endl << endl;
 
-			for(int i = 0; i < decryptedPacket.length(); i++)
-            {
-                packet[i] = decryptedPacket[i];
-            }
-
-			bufArray = split((std::string) packet, ',', bufArray);
-			packet[0] = '\0';
+			bufArray.clear();
+			bufArray = split((std::string) decryptedPacket, ',', bufArray);
 
 			if(bufArray.size() == 10)
 			{
-				recievedHash = bufArray[9];
-				recievedHash = recievedHash.substr(0, recievedHash.length() - 1);
-				recievedHashedData = bufArray[0] + "," + bufArray[1] + "," + bufArray[2] + "," + bufArray[3] + "," + bufArray[4] + "," + bufArray[5] + "," + bufArray[6] + "," + bufArray[7] + "," + bufArray[8];
-				calculatedHash = SHA512HashString(recievedHashedData);
-
-				//cout << recievedHash << " (Length " << recievedHash.length() << ")" << endl;
-				//cout << calculatedHash << " (Length " << calculatedHash.length() << ")" << endl;
-				if(recievedHash == calculatedHash)
-				{
+				if(compareSHA512Hash(bufArray[9], bufArray[0] + "," + bufArray[1] + "," + bufArray[2] + "," + bufArray[3] + "," + bufArray[4] + "," + bufArray[5] + "," + bufArray[6] + "," + bufArray[7] + "," + bufArray[8]))
+                {
 					if(bankNonce == bufArray[7])
 					{
 						command = bufArray[0];
+						atmNonce = bufArray[6];
 						bankNonce = getRandom(32);
 
 						if(((std::string) "login") == command) //if command is 'login'
 						{   
-							bool flag = login (bufArray);
-							if(flag) 
+							if(login(bufArray)) 
 							{
-								valid = true;
+								sendPacket = true;
 								status = "Login Successful";
 							}
 						} 
 						else if(((std::string) "balance") == command) //if command is 'balance'
 						{   
-							float flag = checkBalance (bufArray);
-							if (flag >= 0) 
+							float flag = checkBalance(bufArray);
+							if(flag >= 0) 
 							{
-								valid = true;
+								sendPacket = true;
 								std::stringstream ss;
 								ss << flag;
 								std::string balance = ss.str();
@@ -384,28 +348,25 @@ void* client_thread(void* arg)
 						} 
 						else if(((std::string) "withdraw") == command) //if command is 'withdraw'
 						{   
-							bool flag = processWithdraw (bufArray);
-							if (flag) 
+							if(processWithdraw(bufArray)) 
 							{
-								valid = true;
+								sendPacket = true;
 								status = "Withdraw: $" + bufArray[4];
 							}
 						}
 						else if(((std::string) "transfer") == command) //if command is 'transfer'
 						{   
-							bool flag = processTransfer (bufArray);
-							if (flag) 
+							if(processTransfer(bufArray)) 
 							{
-								valid = true;
+								sendPacket = true;
 								status = "Transfer Successful";
 							}
 						}  
 						else if(((std::string) "logout") == command) //if command is 'logout'
 						{   
-							bool flag = logout (bufArray);
-							if (flag)
+							if(logout (bufArray))
 							{
-								valid = true;
+								sendPacket = true;
 								status = "Logout Successful";
 							}
 						}
@@ -413,25 +374,24 @@ void* client_thread(void* arg)
 				}
 			} 
 
-			if(valid)
+			if(sendPacket)
 			{
-				formBankPacket(packet, command, status, bufArray[6], bankNonce);
+				formBankPacket(packet, command, status, atmNonce, bankNonce);
 			}
 			else
 			{	
 				if(((std::string) "login") == command)
 				{
-					formBankPacket(packet, "error", "User Login Failed.", bufArray[6], bankNonce);
-
+					formBankPacket(packet, "error", "User Login Failed.", atmNonce, bankNonce);
 				}
 				else
 				{
-					formBankPacket(packet, "error", "Error.  Please contact the service team.", bufArray[6], bankNonce);
+					formBankPacket(packet, "error", "Error.  Please contact the service team.", atmNonce, bankNonce);
 				}
 			}
 
 	        epacket[0] = '\0';
-			
+
 			//cout << "[bank] Sending Bank Packet (Length " << strlen(packet) << "): " << endl << (std::string) packet << endl << endl;
 		    encryptedPacket = encryptAESPacket((std::string) packet, sessionAESKey, sessionAESBlock);
 	        //cout << "[bank] Sending Bank Encrypted Packet (Length " << encryptedPacket.length() << "): " << endl << encryptedPacket << endl << endl;
@@ -440,11 +400,11 @@ void* client_thread(void* arg)
 	        {
 	            epacket[i] = encryptedPacket[i];
 	        }
-
-	        length = encryptedPacket.length();
+	        epacket[1408] = '\0';
 
 			//send the new packet back to the client
-			if(sizeof(int) != send(csock, &length, sizeof(int), 0))
+	        length =  strlen(epacket);
+	        if(sizeof(int) != send(csock, &length, sizeof(int), 0))
 			{
 				printf("[bank] fail to send packet length\n");
 				break;
@@ -467,18 +427,17 @@ void* client_thread(void* arg)
 
 void* console_thread(void* arg)
 {
-	char buf[80]; 
+	char buf[50]; 
 	std::string command;
 	std::vector<std::string> bufArray;
 	while(1)
 	{
-		bufArray.clear();
-
 		printf("bank> ");
-		fgets(buf, 79, stdin);
+		fgets(buf, 49, stdin);
 		buf[strlen(buf)-1] = '\0';	//trim off trailing newline
 
 		// Parse data
+		bufArray.clear();
 		bufArray = split((std::string) buf, ' ', bufArray);
 
 		//input parsing
@@ -490,12 +449,11 @@ void* console_thread(void* arg)
 			{   
 				if(bufArray.size() == 3)
 				{
-					bool flag = processDeposit (bufArray[1], bufArray[2]);
-					if (flag) {
+					if(processDeposit (bufArray[1], bufArray[2])) {
 						std::cout << "Deposit [ " << bufArray[1] << " ]: $ " << bufArray[2] << "\n";
 					}
 					else {
-						std::cout << "Invalid deposit operation\n";
+						std::cout << "Deposit Unsuccesful\n";
 					}
 				}
 				else
@@ -507,12 +465,12 @@ void* console_thread(void* arg)
 			{    
 				if(bufArray.size() == 2)
 				{
-					float flag = bankBalance (bufArray[1]);
-					if (flag >= 0) {
+					float flag = bankBalance(bufArray[1]);
+					if(flag >= 0) {
 						std::cout << "Balance [ " << bufArray[1] << " ]: $ " << flag << "\n";
 					}
 					else {
-						std::cout << "Invalid balance operation\n";
+						std::cout << "Balance Unsuccesful\n";
 					}
 				}
 				else
