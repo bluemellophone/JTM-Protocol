@@ -1,5 +1,5 @@
 	CC=g++
-	CFLAGS=-I./includes/cryptopp -L./includes/cryptopp -lcryptopp -m32
+	CFLAGS=-I./includes/cryptopp -L./includes/cryptopp -lcryptopp
 
 all:
 	$(CC) $(CFLAGS) atm.cpp -o atm

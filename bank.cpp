@@ -206,8 +206,8 @@ int main(int argc, char* argv[])
 void* client_thread(void* arg)
 {
 	//int csock = (int)arg;
-	long unsigned int csock = (long unsigned int)arg;
-
+	long int csock = (long int)arg;
+	
 	//input loop
 	char packet[1024];
 	char epacket[1408];

@@ -63,9 +63,8 @@ int main(int argc, char* argv[])
 void* client_thread(void* arg)
 {
 	//int csock = (int)arg;
-	long unsigned int csock = (long unsigned int)arg;
+	long int csock = (long int)arg;
 	
-	//printf("[proxy] client ID #%d connected\n", csock);
 	printf("[proxy] client ID #%ld connected\n", csock);
 	
 	//create a new socket and connect to the bank
@@ -152,7 +151,6 @@ void* client_thread(void* arg)
 
 	}
 
-	//printf("[proxy] client ID #%d disconnected\n", csock);
 	printf("[proxy] client ID #%ld disconnected\n", csock);
 		
 	close(bsock);
