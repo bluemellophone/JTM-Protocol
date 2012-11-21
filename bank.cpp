@@ -257,13 +257,8 @@ void* client_thread(void* arg)
 			sessionAESBlock = "NOT USED";
 			epacket[1039] = '\0';
                     
-			//printf("[bank] Recieved Encrypted ATM Handshake (Length %d): \n%s\n\n", (int) ((std::string) epacket).length(), epacket);
-			
-            decryptedPacket = decryptRSAPacket((std::string) epacket, "keys/bank");
-            
-            //cout << "[atm] Recieved ATM Handshake (Length " << decryptedPacket.length() << "): " << endl << decryptedPacket << endl << endl;
-		
-			bufArray.clear();
+			decryptedPacket = decryptRSAPacket((std::string) epacket, "keys/bank");
+            bufArray.clear();
 			bufArray = split(decryptedPacket, ',', bufArray);
 			
 			if(bufArray.size() == 4)
@@ -282,9 +277,6 @@ void* client_thread(void* arg)
 			} 
 
 			formBankHandshake(epacket, command, atmNonce, bankNonce, sessionAESKey, sessionAESBlock);
-
-			//cout << "[bank] Sending Bank Handshake (Length " << strlen(epacket) << "): " << endl << (std::string) epacket << endl << endl;
-		    
 		    encryptedPacket = encryptRSAPacket((std::string) epacket, "keys/atm.pub");
             
             for(int i = 0; i < encryptedPacket.length(); i++)
@@ -292,9 +284,7 @@ void* client_thread(void* arg)
                 epacket[i] = encryptedPacket[i];
             }
 
-            //cout << "[atm] Sending Encrypted Handshake (Length " << strlen(epacket) << "): " << endl << ((std::string) epacket) << endl << endl;
-			
-			length = strlen(epacket);
+            length = strlen(epacket);
 			if(sizeof(int) != send(csock, &length, sizeof(int), 0))
 			{
 				printf("[bank] fail to send packet length\n");
@@ -308,13 +298,9 @@ void* client_thread(void* arg)
 		}	
 		else if(length == 1408)
 		{
-			// RECIEVED AES PACKET
 			packet[0] = '\0';
-
-			//printf("[bank] Recieved ATM Encrypted Packet (Length %d): \n%s\n", (int) ((std::string) epacket).length(), epacket);
 			decryptedPacket = decryptAESPacket((std::string) epacket, sessionAESKey, sessionAESBlock);
-			//cout << "[bank] Recieved ATM Packet (Length " << decryptedPacket.length() << "): " << endl << decryptedPacket << endl << endl;
-
+			
 			bufArray.clear();
 			bufArray = split((std::string) decryptedPacket, ',', bufArray);
 
@@ -393,19 +379,15 @@ void* client_thread(void* arg)
 			}
 
 	        epacket[0] = '\0';
-
-			//cout << "[bank] Sending Bank Packet (Length " << strlen(packet) << "): " << endl << (std::string) packet << endl << endl;
-		    encryptedPacket = encryptAESPacket((std::string) packet, sessionAESKey, sessionAESBlock);
-	        //cout << "[bank] Sending Bank Encrypted Packet (Length " << encryptedPacket.length() << "): " << endl << encryptedPacket << endl << endl;
-
+			encryptedPacket = encryptAESPacket((std::string) packet, sessionAESKey, sessionAESBlock);
+	        
 	        for(int i = 0; i < encryptedPacket.length(); i++)
 	        {
 	            epacket[i] = encryptedPacket[i];
 	        }
 	        epacket[1408] = '\0';
 
-			//send the new packet back to the client
-	        length =  strlen(epacket);
+			length =  strlen(epacket);
 	        if(sizeof(int) != send(csock, &length, sizeof(int), 0))
 			{
 				printf("[bank] fail to send packet length\n");

@@ -317,12 +317,8 @@ int main(int argc, char* argv[])
                     atmNonce = getRandom(32);
                     
                     formATMHandshake(hpacket, atmNonce);
-                    //cout << "[atm] Sending Bank Handshake (Length " << strlen(hpacket) << "): " << endl << (std::string) hpacket << endl << endl;
-                    
                     encryptedPacket = encryptRSAPacket((std::string) hpacket, "keys/bank.pub");
                     
-                    //cout << "[atm] Encrypted Handshake (Length " << encryptedPacket.length() << "): " << endl << encryptedPacket << endl << endl;
-
                     for(int i = 0; i < encryptedPacket.length(); i++)
                     {
                         hpacket[i] = encryptedPacket[i];
@@ -349,9 +345,6 @@ int main(int argc, char* argv[])
                     {
                         break;
                     }
-
-                    //cout << "[atm] Recieved Bank Handshake (Length " << strlen(hpacket) << "): " << endl << (std::string) hpacket << endl << endl;
-                    
                     if(length == 1039)
                     {
                         decryptedPacket = decryptRSAPacket((std::string) hpacket, "keys/atm");
@@ -402,11 +395,8 @@ int main(int argc, char* argv[])
                     messageTimeout = time(NULL);
                     atmNonce = getRandom(32);
                     formATMPacket(packet, command, username, cardHash, pin, item1, item2, atmNonce, bankNonce);
-                    
-                    //cout << "[atm] Sending ATM Packet (Length " << strlen(packet) << "): " << endl << (std::string) packet << endl << endl;
                     encryptedPacket = encryptAESPacket((std::string) packet, sessionAESKey, sessionAESBlock);
-                    //cout << "[atm] Sending ATM Encrypted Packet (Length " << encryptedPacket.length() << "): " << endl << encryptedPacket << endl << endl;
-
+                    
                     for(int i = 0; i < encryptedPacket.length(); i++)
                     {
                         epacket[i] = encryptedPacket[i];
@@ -447,10 +437,8 @@ int main(int argc, char* argv[])
                     {
                         if(time(NULL) - messageTimeout < 30) // Bank Response needs to be in less that 30 seconds.
                         {
-                            //printf("[atm] Recieved Bank Encrypted Packet (Length %d): \n%s\n\n", (int) ((std::string) epacket).length(), epacket);
                             decryptedPacket = decryptAESPacket((std::string) epacket, sessionAESKey, sessionAESBlock);
-                            //cout << "[atm] Recieved Bank Packet (Length " << decryptedPacket.length() << "): " << endl << decryptedPacket << endl << endl;
-                        
+                            
                             bufArray.clear();
                             bufArray = split(decryptedPacket, ',', bufArray);
 
