@@ -35,7 +35,8 @@ ISMINGW = $(shell $(CXX) --version 2>&1 | $(EGREP) -c "mingw")
 
 ifneq ($(GCC42_OR_LATER),0)
 ifeq ($(UNAME),Darwin)
-CXXFLAGS += -arch x86_64 -arch i386
+CXXFLAGS += -m32
+#CXXFLAGS += -arch x86_64 -arch i386
 else
 CXXFLAGS += -march=native
 endif
@@ -130,6 +131,8 @@ DLLOBJS = $(DLLSRCS:.cpp=.export.o)
 LIBIMPORTOBJS = $(LIBOBJS:.o=.import.o)
 TESTIMPORTOBJS = $(TESTOBJS:.o=.import.o)
 DLLTESTOBJS = dlltest.dllonly.o
+
+CXXFLAGS += -m32
 
 all: cryptest.exe
 
